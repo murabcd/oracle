@@ -111,8 +111,7 @@ export default function Image() {
               letterSpacing: "-0.04em",
             }}
           >
-            Build node-based text, image, and reasoning workflows with OpenAI
-            models.
+            Build node-based text, image, and reasoning workflows.
           </div>
         </div>
       </div>

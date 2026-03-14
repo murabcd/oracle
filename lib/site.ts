@@ -17,7 +17,7 @@ const siteUrl =
 export const siteConfig = {
   name: "Oracle",
   description:
-    "Oracle is a visual AI playground for building node-based text, image, and reasoning workflows with OpenAI models.",
+    "Oracle is a visual AI playground for building node-based text, image, and reasoning workflows.",
   url: siteUrl,
   ogImage: "/opengraph-image",
   ogImageAlt:
