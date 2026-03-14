@@ -2,6 +2,7 @@
 
 import { useReactFlow } from "@xyflow/react";
 import { memo } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { nodeButtons } from "@/lib/node-buttons";
 import { useNodeOperations } from "@/providers/node-operations";
 import { Panel } from "./ai-elements/panel";
@@ -9,6 +10,7 @@ import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 const ToolbarInner = () => {
+  const isMobile = useIsMobile();
   const { getViewport } = useReactFlow();
   const { addNode } = useNodeOperations();
 
@@ -38,7 +40,7 @@ const ToolbarInner = () => {
     <Panel
       className="rounded-full"
       onDoubleClick={(e) => e.stopPropagation()}
-      position="bottom-right"
+      position={isMobile ? "top-right" : "bottom-right"}
     >
       {nodeButtons.map((button) => (
         <Tooltip key={button.id}>
