@@ -65,7 +65,7 @@ export default function Image() {
           justifyContent: "center",
           padding: "110px 72px 72px",
           width: "100%",
-          gap: 28,
+          gap: 24,
         }}
       >
         <div
@@ -114,32 +114,6 @@ export default function Image() {
             Build node-based text, image, and reasoning workflows with OpenAI
             models.
           </div>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 18,
-            marginTop: 12,
-          }}
-        >
-          {["Prompt chaining", "Reasoning", "Image generation"].map((label) => (
-            <div
-              key={label}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                padding: "14px 22px",
-                borderRadius: 999,
-                background: "#111111",
-                color: "#ffffff",
-                fontSize: 26,
-                fontWeight: 600,
-                letterSpacing: "-0.03em",
-              }}
-            >
-              {label}
-            </div>
-          ))}
         </div>
       </div>
     </div>,
