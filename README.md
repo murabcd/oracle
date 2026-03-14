@@ -1,5 +1,5 @@
 <a href="https://oracle-oss.vercel.app">
-  <img alt="An Open-source AI Chatbot Built With Next.js." src="./public/preview/oracle.png">
+  <img alt="Open-source AI Chatbot Built With Next.js." src="./public/preview/oracle.png">
   <h1 align="center">Oracle</h1>
 </a>
 
