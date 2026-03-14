@@ -1,3 +1,4 @@
+import { google } from "@ai-sdk/google";
 import {
   type OpenAILanguageModelResponsesOptions,
   openai,
@@ -19,13 +20,23 @@ export const POST = async (req: Request) => {
     return new Response("Invalid model", { status: 400 });
   }
 
+  const selectedModelId = modelId as keyof typeof textModels;
+  const selectedModel = textModels[selectedModelId];
+
   const result = streamText({
-    model: openai(modelId),
-    providerOptions: {
-      openai: {
-        reasoningSummary: "auto",
-      } satisfies OpenAILanguageModelResponsesOptions,
-    },
+    model:
+      selectedModel.chef.id === "google"
+        ? google(selectedModelId)
+        : openai(selectedModelId),
+    ...(selectedModel.chef.id === "openai"
+      ? {
+          providerOptions: {
+            openai: {
+              reasoningSummary: "auto",
+            } satisfies OpenAILanguageModelResponsesOptions,
+          },
+        }
+      : {}),
     system: [
       "You are a helpful assistant that synthesizes an answer or content.",
       "The user will provide a collection of data from disparate sources.",

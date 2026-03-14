@@ -1,3 +1,4 @@
+import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
 import { head, put } from "@vercel/blob";
 import { generateImage as generateImageAsset, generateText } from "ai";
@@ -17,7 +18,20 @@ import {
   imageModels,
   videoModels,
 } from "@/lib/model-catalog";
+import type { OracleModel } from "@/lib/providers";
 import { assertBlobUrl } from "@/lib/url";
+
+const getImageModel = (modelId: string) => {
+  if (!(modelId in imageModels)) {
+    throw new Error("Invalid image model");
+  }
+
+  const model = imageModels[modelId as keyof typeof imageModels] as OracleModel;
+
+  return model.chef.id === "google"
+    ? google.image(modelId)
+    : openai.image(modelId);
+};
 
 export async function describeImage(
   url: string
@@ -55,12 +69,8 @@ export async function generateImage(
   input: GenerateImageInput
 ): Promise<GeneratedMediaSuccess | ErrorResponse> {
   try {
-    if (!(input.modelId in imageModels)) {
-      throw new Error("Invalid image model");
-    }
-
     const result = await generateImageAsset({
-      model: openai.image(input.modelId),
+      model: getImageModel(input.modelId),
       prompt: [
         "Generate an image based on the following instructions and context.",
         "---",
@@ -106,10 +116,6 @@ export async function editImage(
   input: EditImageInput
 ): Promise<GeneratedMediaSuccess | ErrorResponse> {
   try {
-    if (!(input.modelId in imageModels)) {
-      throw new Error("Invalid image model");
-    }
-
     const defaultPrompt =
       input.images.length > 1
         ? "Create a variant of the image."
@@ -132,7 +138,7 @@ export async function editImage(
     );
 
     const result = await generateImageAsset({
-      model: openai.image(input.modelId),
+      model: getImageModel(input.modelId),
       prompt: {
         images: imageData,
         text: prompt,

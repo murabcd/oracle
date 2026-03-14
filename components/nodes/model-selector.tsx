@@ -98,6 +98,11 @@ const getModelDisabled = (model: OracleModel) => {
   return false;
 };
 
+const providerOrder: Record<string, number> = {
+  openai: 0,
+  google: 1,
+};
+
 const CommandGroupHeading = ({ data }: { data: OracleProvider }) => (
   <span className="block truncate">{data.name}</span>
 );
@@ -151,6 +156,13 @@ export const ModelSelector = ({
   );
 
   const sortedChefs = Object.keys(groupedOptions).sort((a, b) => {
+    const aPriority = providerOrder[a] ?? Number.POSITIVE_INFINITY;
+    const bPriority = providerOrder[b] ?? Number.POSITIVE_INFINITY;
+
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+
     const aName = Object.values(providers)
       .find((provider) => provider.id === a)
       ?.name.toLowerCase();
