@@ -280,14 +280,14 @@ export const VideoTransform = ({
         </Skeleton>
       ) : null}
       {!(loading || data.generated?.url || hasVideoGeneration) && (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary px-4 text-center">
+        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 px-4 text-center">
           <p className="text-muted-foreground text-sm">
             Video generation is not configured in this app.
           </p>
         </div>
       )}
       {!(loading || hasGeneratedVideo) && hasVideoGeneration && (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary">
+        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60">
           <p className="text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
             generate video

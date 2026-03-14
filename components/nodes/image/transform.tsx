@@ -236,7 +236,7 @@ export const ImageTransform = ({
         </Skeleton>
       ) : null}
       {!(loading || data.generated?.url) && (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary p-4">
+        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
           <p className="text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
             create an image

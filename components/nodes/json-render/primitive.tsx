@@ -4,7 +4,6 @@ import { type ChangeEventHandler, useMemo } from "react";
 import { NodeLayout } from "@/components/nodes/layout";
 import { Textarea } from "@/components/ui/textarea";
 import { parseJsonRenderSpec } from "@/lib/json-render/catalog";
-import { cn } from "@/lib/utils";
 import type { JsonRenderNodeProps } from ".";
 import { JsonRenderPreview } from "./preview";
 
@@ -21,7 +20,6 @@ export const JsonRenderPrimitive = ({
   title,
 }: JsonRenderPrimitiveProps) => {
   const { updateNodeData } = useReactFlow();
-  const hasJson = Boolean(data.json?.trim());
   const parsed = useMemo(() => {
     if (!data.json?.trim()) {
       return { error: null, spec: null };
@@ -73,21 +71,16 @@ export const JsonRenderPrimitive = ({
       {parsed.spec ? (
         <JsonRenderPreview className="min-h-72 flex-1" spec={parsed.spec} />
       ) : (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary px-4 text-center">
+        <div className="flex min-h-72 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary/60 px-4 text-center">
           <p className="max-w-52 text-pretty text-muted-foreground text-sm">
             Paste a valid JSON UI spec to preview it here.
           </p>
         </div>
       )}
       <Textarea
-        className={cn(
-          "shrink-0 resize-none rounded-none border-none bg-transparent! font-mono text-xs shadow-none focus-visible:ring-0",
-          hasJson ? "min-h-40" : "min-h-24"
-        )}
+        className="shrink-0 resize-none rounded-none border-none bg-transparent! font-mono text-xs shadow-none focus-visible:ring-0"
         onChange={handleChange}
         placeholder={placeholder}
-        rows={hasJson ? 12 : 4}
-        style={{ fieldSizing: hasJson ? "content" : "fixed" }}
         value={data.json ?? ""}
       />
       {parsed.error ? (

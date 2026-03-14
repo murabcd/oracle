@@ -42,6 +42,10 @@ interface NodeLayoutProps {
     tooltip?: string;
     children: ReactNode;
   }[];
+  handles?: {
+    source?: boolean;
+    target?: boolean;
+  };
   className?: string;
   contentClassName?: string;
   bodyClassName?: string;
@@ -77,6 +81,7 @@ export const NodeLayout = ({
   id,
   data,
   toolbar,
+  handles,
   title,
   className,
   contentClassName,
@@ -186,8 +191,9 @@ export const NodeLayout = ({
               "rounded-[28px] bg-transparent shadow-none"
             )}
             handles={{
-              target: true,
-              source: type !== "video" && type !== "json-render",
+              target: handles?.target ?? true,
+              source:
+                handles?.source ?? (type !== "video" && type !== "json-render"),
             }}
           >
             {type !== "drop" && (

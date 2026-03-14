@@ -1,4 +1,10 @@
-import { FilmIcon, ImageIcon, PaintbrushIcon, TextIcon } from "lucide-react";
+import {
+  FilmIcon,
+  ImageIcon,
+  PaintbrushIcon,
+  TextIcon,
+  WorkflowIcon,
+} from "lucide-react";
 
 export const nodeButtons = [
   {
@@ -20,5 +26,10 @@ export const nodeButtons = [
     id: "json-render",
     label: "Interface",
     icon: PaintbrushIcon,
+  },
+  {
+    id: "mermaid",
+    label: "Mermaid",
+    icon: WorkflowIcon,
   },
 ];

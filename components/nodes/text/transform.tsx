@@ -186,7 +186,7 @@ const TextTransformOutput = ({
     ) : null}
     {!(data.generated?.text || nonUserMessages.length) &&
       status !== "submitted" && (
-        <div className="flex aspect-video w-full items-center justify-center bg-secondary">
+        <div className="flex aspect-video w-full items-center justify-center bg-secondary/60">
           <p className="text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
             generate text

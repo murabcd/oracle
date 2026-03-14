@@ -1,3 +1,5 @@
+"use client";
+
 import { getIncomers, useReactFlow } from "@xyflow/react";
 import { CopyIcon, Loader2Icon, PlayIcon, RotateCcwIcon } from "lucide-react";
 import {
@@ -12,17 +14,17 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { handleError } from "@/lib/error/handle";
-import { generateJsonRenderStreamRequest } from "@/lib/json-render/client";
+import { generateMermaidRequest } from "@/lib/mermaid/client";
 import {
   getDescriptionsFromImageNodes,
   getTextFromTextNodes,
 } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
-import type { JsonRenderNodeProps } from ".";
-import { JsonRenderPreview } from "./preview";
+import type { MermaidNodeProps } from ".";
+import { MermaidPreview } from "./view";
 
-type JsonRenderTransformProps = JsonRenderNodeProps & {
+type MermaidTransformProps = MermaidNodeProps & {
   title: string;
 };
 
@@ -46,17 +48,17 @@ const getDefaultModel = (
   return firstModel;
 };
 
-export const JsonRenderTransform = ({
+export const MermaidTransform = ({
   data,
   id,
   type,
   title,
-}: JsonRenderTransformProps) => {
+}: MermaidTransformProps) => {
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
   const { models } = useModels();
   const [loading, setLoading] = useState(false);
   const modelId = data.model ?? getDefaultModel(models);
-  const previewSpec = data.previewSpec ?? data.generated?.spec;
+  const previewSource = data.generated?.source ?? data.source;
 
   const handleGenerate = useCallback(async () => {
     if (loading) {
@@ -70,7 +72,7 @@ export const JsonRenderTransform = ({
     if (
       !(textPrompts.length || imageDescriptions.length || data.instructions)
     ) {
-      handleError("Error generating UI", "No prompts found");
+      handleError("Error generating diagram", "No prompts found");
       return;
     }
 
@@ -87,56 +89,30 @@ export const JsonRenderTransform = ({
     try {
       setLoading(true);
 
-      updateNodeData(id, {
-        previewSpec: data.generated?.spec,
+      const response = await generateMermaidRequest({
+        prompt: content.join("\n"),
+        modelId,
+        instructions: data.instructions,
+        startingSource: data.generated?.source ?? data.source,
       });
-
-      const response = await generateJsonRenderStreamRequest(
-        {
-          prompt: content.join("\n"),
-          modelId,
-          instructions: data.instructions,
-          startingSpec: data.generated?.spec,
-        },
-        {
-          onSpec: (spec) => {
-            if (
-              typeof spec.root !== "string" ||
-              !spec.elements ||
-              typeof spec.elements !== "object" ||
-              !(spec.root in spec.elements)
-            ) {
-              return;
-            }
-
-            updateNodeData(id, {
-              previewSpec: spec,
-            });
-          },
-        }
-      );
 
       updateNodeData(id, {
         generated: {
-          json: response.json,
-          spec: response.spec,
+          source: response.source,
         },
-        previewSpec: undefined,
         updatedAt: new Date().toISOString(),
       });
 
-      toast.success("UI generated");
+      toast.success("Diagram generated");
     } catch (error) {
-      updateNodeData(id, {
-        previewSpec: undefined,
-      });
-      handleError("Error generating UI", error);
+      handleError("Error generating diagram", error);
     } finally {
       setLoading(false);
     }
   }, [
-    data.generated?.spec,
+    data.generated?.source,
     data.instructions,
+    data.source,
     getEdges,
     getNodes,
     id,
@@ -146,13 +122,15 @@ export const JsonRenderTransform = ({
   ]);
 
   const handleCopy = useCallback(() => {
-    if (!data.generated?.json) {
+    const value = data.generated?.source ?? data.source;
+
+    if (!value) {
       return;
     }
 
-    navigator.clipboard.writeText(data.generated.json);
-    toast.success("JSON copied");
-  }, [data.generated?.json]);
+    navigator.clipboard.writeText(value);
+    toast.success("Mermaid copied");
+  }, [data.generated?.source, data.source]);
 
   const handleInstructionsChange: ChangeEventHandler<HTMLTextAreaElement> = (
     event
@@ -197,14 +175,14 @@ export const JsonRenderTransform = ({
           }
         : {
             id: `generate-${id}`,
-            tooltip: data.generated?.spec ? "Regenerate" : "Generate",
+            tooltip: data.generated?.source ? "Regenerate" : "Generate",
             children: (
               <Button
                 className="rounded-full"
                 onClick={handleGenerate}
                 size="icon"
               >
-                {data.generated?.spec ? (
+                {data.generated?.source ? (
                   <RotateCcwIcon size={12} />
                 ) : (
                   <PlayIcon size={12} />
@@ -214,10 +192,10 @@ export const JsonRenderTransform = ({
           }
     );
 
-    if (data.generated?.json) {
+    if (data.generated?.source || data.source) {
       items.push({
         id: `copy-${id}`,
-        tooltip: "Copy JSON",
+        tooltip: "Copy Mermaid",
         children: (
           <Button
             className="rounded-full"
@@ -233,8 +211,8 @@ export const JsonRenderTransform = ({
 
     return items;
   }, [
-    data.generated?.json,
-    data.generated?.spec,
+    data.generated?.source,
+    data.source,
     handleCopy,
     handleGenerate,
     id,
@@ -249,21 +227,23 @@ export const JsonRenderTransform = ({
       bodyClassName="flex h-full flex-col"
       contentClassName="h-full"
       data={data}
+      handles={{
+        source: false,
+      }}
       id={id}
       title={title}
       toolbar={toolbar}
       type={type}
     >
-      {previewSpec ? (
-        <JsonRenderPreview className="min-h-72 flex-1" spec={previewSpec} />
-      ) : (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary/60 px-4 text-center">
-          <p className="max-w-56 text-pretty text-muted-foreground text-sm">
+      <MermaidPreview
+        emptyContent={
+          <p className="text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
-            generate UI.
+            generate mermaid.
           </p>
-        </div>
-      )}
+        }
+        source={previewSource ?? ""}
+      />
       <Textarea
         className="shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
         onChange={handleInstructionsChange}

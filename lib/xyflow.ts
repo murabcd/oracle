@@ -38,7 +38,11 @@ export const getImagesFromImageNodes = (nodes: Node[]) => {
 };
 
 export const isValidSourceTarget = (source: Node, _target: Node) => {
-  if (source.type === "video" || source.type === "drop") {
+  if (
+    source.type === "video" ||
+    source.type === "drop" ||
+    source.type === "mermaid"
+  ) {
     return false;
   }
 
