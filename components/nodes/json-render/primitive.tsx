@@ -62,11 +62,18 @@ export const JsonRenderPrimitive = ({
   };
 
   return (
-    <NodeLayout data={data} id={id} title={title} type={type}>
+    <NodeLayout
+      bodyClassName="flex h-full flex-col"
+      contentClassName="h-full"
+      data={data}
+      id={id}
+      title={title}
+      type={type}
+    >
       {parsed.spec ? (
-        <JsonRenderPreview className="max-h-72 min-h-72" spec={parsed.spec} />
+        <JsonRenderPreview className="min-h-72 flex-1" spec={parsed.spec} />
       ) : (
-        <div className="flex min-h-72 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary px-4 text-center">
+        <div className="flex min-h-72 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary px-4 text-center">
           <p className="max-w-52 text-pretty text-muted-foreground text-sm">
             Paste a valid JSON UI spec to preview it here.
           </p>
@@ -74,7 +81,7 @@ export const JsonRenderPrimitive = ({
       )}
       <Textarea
         className={cn(
-          "resize-none rounded-none border-none bg-transparent! font-mono text-xs shadow-none focus-visible:ring-0",
+          "shrink-0 resize-none rounded-none border-none bg-transparent! font-mono text-xs shadow-none focus-visible:ring-0",
           hasJson ? "min-h-40" : "min-h-24"
         )}
         onChange={handleChange}

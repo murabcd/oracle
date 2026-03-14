@@ -12,7 +12,7 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { handleError } from "@/lib/error/handle";
-import { generateJsonRenderRequest } from "@/lib/json-render/client";
+import { generateJsonRenderStreamRequest } from "@/lib/json-render/client";
 import {
   getDescriptionsFromImageNodes,
   getTextFromTextNodes,
@@ -56,6 +56,7 @@ export const JsonRenderTransform = ({
   const { models } = useModels();
   const [loading, setLoading] = useState(false);
   const modelId = data.model ?? getDefaultModel(models);
+  const previewSpec = data.previewSpec ?? data.generated?.spec;
 
   const handleGenerate = useCallback(async () => {
     if (loading) {
@@ -86,27 +87,49 @@ export const JsonRenderTransform = ({
     try {
       setLoading(true);
 
-      const response = await generateJsonRenderRequest({
-        prompt: content.join("\n"),
-        modelId,
-        instructions: data.instructions,
-        startingSpec: data.generated?.spec,
+      updateNodeData(id, {
+        previewSpec: data.generated?.spec,
       });
 
-      if ("error" in response) {
-        throw new Error(response.error);
-      }
+      const response = await generateJsonRenderStreamRequest(
+        {
+          prompt: content.join("\n"),
+          modelId,
+          instructions: data.instructions,
+          startingSpec: data.generated?.spec,
+        },
+        {
+          onSpec: (spec) => {
+            if (
+              typeof spec.root !== "string" ||
+              !spec.elements ||
+              typeof spec.elements !== "object" ||
+              !(spec.root in spec.elements)
+            ) {
+              return;
+            }
+
+            updateNodeData(id, {
+              previewSpec: spec,
+            });
+          },
+        }
+      );
 
       updateNodeData(id, {
         generated: {
           json: response.json,
           spec: response.spec,
         },
+        previewSpec: undefined,
         updatedAt: new Date().toISOString(),
       });
 
       toast.success("UI generated");
     } catch (error) {
+      updateNodeData(id, {
+        previewSpec: undefined,
+      });
       handleError("Error generating UI", error);
     } finally {
       setLoading(false);
@@ -222,14 +245,19 @@ export const JsonRenderTransform = ({
   ]);
 
   return (
-    <NodeLayout data={data} id={id} title={title} toolbar={toolbar} type={type}>
-      {data.generated?.spec ? (
-        <JsonRenderPreview
-          className="max-h-72 min-h-72"
-          spec={data.generated.spec}
-        />
+    <NodeLayout
+      bodyClassName="flex h-full flex-col"
+      contentClassName="h-full"
+      data={data}
+      id={id}
+      title={title}
+      toolbar={toolbar}
+      type={type}
+    >
+      {previewSpec ? (
+        <JsonRenderPreview className="min-h-72 flex-1" spec={previewSpec} />
       ) : (
-        <div className="flex min-h-72 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary px-4 text-center">
+        <div className="flex min-h-72 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary px-4 text-center">
           <p className="max-w-56 text-pretty text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
             generate a JSON-powered UI preview.
@@ -237,7 +265,7 @@ export const JsonRenderTransform = ({
         </div>
       )}
       <Textarea
-        className="min-h-24 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
+        className="min-h-24 shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
         onChange={handleInstructionsChange}
         placeholder="Enter instruction..."
         value={data.instructions ?? ""}

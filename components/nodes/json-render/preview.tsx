@@ -11,7 +11,7 @@ export const JsonRenderPreview = ({
   spec,
 }: {
   className?: string;
-  spec: JsonRenderSpec;
+  spec: JsonRenderSpec | Spec;
 }) => (
   <div
     className={cn(
@@ -19,7 +19,7 @@ export const JsonRenderPreview = ({
       className
     )}
   >
-    <div className="min-h-56 rounded-[22px] border border-white/10 bg-[#101312]/90 p-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+    <div className="min-h-full rounded-[22px] border border-white/10 bg-[#101312]/90 p-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
       <JSONUIProvider initialState={{}} registry={jsonRenderRegistry}>
         <Renderer registry={jsonRenderRegistry} spec={spec as Spec} />
       </JSONUIProvider>

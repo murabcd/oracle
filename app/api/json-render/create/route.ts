@@ -1,5 +1,5 @@
 import { jsonRenderSchema } from "@/lib/json-render/catalog";
-import { generateJsonRender } from "@/lib/json-render/server";
+import { streamJsonRender } from "@/lib/json-render/server";
 
 export const maxDuration = 60;
 
@@ -35,7 +35,11 @@ export const POST = async (request: Request) => {
     }
   }
 
-  const response = await generateJsonRender(body);
+  const result = streamJsonRender(body);
 
-  return Response.json(response);
+  return new Response(result.textStream.pipeThrough(new TextEncoderStream()), {
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+    },
+  });
 };

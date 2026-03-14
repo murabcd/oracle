@@ -1,3 +1,4 @@
+import type { Spec } from "@json-render/core";
 import { useNodeConnections } from "@xyflow/react";
 import type { JsonRenderSpec } from "@/lib/json-render/catalog";
 import { JsonRenderPrimitive } from "./primitive";
@@ -12,6 +13,7 @@ export interface JsonRenderNodeProps {
     instructions?: string;
     json?: string;
     spec?: JsonRenderSpec;
+    previewSpec?: Spec;
     generated?: {
       json: string;
       spec: JsonRenderSpec;
@@ -29,5 +31,5 @@ export const JsonRenderNode = (props: JsonRenderNodeProps) => {
     ? JsonRenderTransform
     : JsonRenderPrimitive;
 
-  return <Component {...props} title="UI" />;
+  return <Component {...props} title="Interface" />;
 };

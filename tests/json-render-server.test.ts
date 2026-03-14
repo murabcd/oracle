@@ -1,10 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { parseJsonRenderSpec } from "@/lib/json-render/catalog";
 
 const google = vi.fn();
 const openai = vi.fn();
-const generateObject = vi.fn();
-const generateText = vi.fn();
+const streamText = vi.fn();
 
 vi.mock("@ai-sdk/google", () => ({
   google,
@@ -15,62 +13,47 @@ vi.mock("@ai-sdk/openai", () => ({
 }));
 
 vi.mock("ai", () => ({
-  generateObject,
-  generateText,
+  streamText,
 }));
 
-describe("generateJsonRender", () => {
+describe("streamJsonRender", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("generates UI in no-schema mode and validates it locally", async () => {
+  it("streams fresh generation with the selected OpenAI model", async () => {
     openai.mockReturnValue({ provider: "openai-model" });
-    generateObject.mockResolvedValue({
-      object: {
-        root: "text-1",
-        elements: {
-          "text-1": {
-            type: "Text",
-            props: {
-              text: "Ready",
-              variant: null,
-            },
-            children: [],
-          },
-        },
-      },
+    streamText.mockReturnValue({
+      textStream: new ReadableStream(),
     });
 
-    const { generateJsonRender } = await import("@/lib/json-render/server");
-    const result = await generateJsonRender({
+    const { streamJsonRender } = await import("@/lib/json-render/server");
+    const result = streamJsonRender({
       modelId: "gpt-5.4",
       prompt: "Build a compact status card",
       instructions: "Keep it minimal",
     });
 
     expect(openai).toHaveBeenCalledWith("gpt-5.4");
-    expect(generateObject).toHaveBeenCalledWith({
+    expect(streamText).toHaveBeenCalledWith({
       model: { provider: "openai-model" },
-      output: "no-schema",
       system: expect.any(String),
-      prompt: expect.any(String),
+      prompt: expect.stringContaining("Instructions:\nKeep it minimal"),
     });
-    expect(result).toEqual({
-      json: `{
-  "root": "text-1",
-  "elements": {
-    "text-1": {
-      "type": "Text",
-      "props": {
-        "text": "Ready",
-        "variant": null
-      },
-      "children": []
-    }
-  }
-}`,
-      spec: {
+    expect(result.textStream).toBeInstanceOf(ReadableStream);
+  });
+
+  it("streams patch refinements when a starting spec is provided", async () => {
+    openai.mockReturnValue({ provider: "openai-model" });
+    streamText.mockReturnValue({
+      textStream: new ReadableStream(),
+    });
+
+    const { streamJsonRender } = await import("@/lib/json-render/server");
+    streamJsonRender({
+      modelId: "gpt-5.4",
+      prompt: "Update the copy",
+      startingSpec: {
         root: "text-1",
         elements: {
           "text-1": {
@@ -80,168 +63,36 @@ describe("generateJsonRender", () => {
               variant: null,
             },
             children: [],
+            visible: null,
           },
         },
       },
     });
+
+    expect(streamText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: expect.stringContaining("Update the copy"),
+      })
+    );
   });
 
-  it("returns a validation error when the model emits an invalid spec", async () => {
+  it("uses the Google provider for Google models", async () => {
     google.mockReturnValue({ provider: "google-model" });
-    generateObject.mockResolvedValue({
-      object: {
-        root: "bad-1",
-        elements: {
-          "bad-1": {
-            type: "Unknown",
-            props: {},
-            children: [],
-          },
-        },
-      },
+    streamText.mockReturnValue({
+      textStream: new ReadableStream(),
     });
 
-    const { generateJsonRender } = await import("@/lib/json-render/server");
-    const result = await generateJsonRender({
+    const { streamJsonRender } = await import("@/lib/json-render/server");
+    streamJsonRender({
       modelId: "gemini-2.5-flash",
-      prompt: "Build something invalid",
+      prompt: "Build a compact status card",
     });
 
     expect(google).toHaveBeenCalledWith("gemini-2.5-flash");
-    expect("error" in result).toBe(true);
-    if (!("error" in result)) {
-      throw new Error("Expected generation to fail validation");
-    }
-    expect(result).toHaveProperty("error");
-    expect(result.error).toContain('"path": [');
-    expect(result.error).toContain('"type"');
-  });
-
-  it("retries once when the first response is missing the required spec shape", async () => {
-    openai.mockReturnValue({ provider: "openai-model" });
-    generateObject
-      .mockResolvedValueOnce({
-        object: {},
-      })
-      .mockResolvedValueOnce({
-        object: {
-          root: "text-1",
-          elements: {
-            "text-1": {
-              type: "Text",
-              props: {
-                text: "Recovered",
-                variant: null,
-              },
-              children: [],
-            },
-          },
-        },
-      });
-
-    const { generateJsonRender } = await import("@/lib/json-render/server");
-    const result = await generateJsonRender({
-      modelId: "gpt-5.4",
-      prompt: "Build a compact recovery card",
-    });
-
-    expect(generateObject).toHaveBeenCalledTimes(2);
-    expect(generateObject).toHaveBeenNthCalledWith(
-      2,
+    expect(streamText).toHaveBeenCalledWith(
       expect.objectContaining({
-        prompt: expect.stringContaining(
-          "Your previous response was invalid. Return a non-empty JSON object with root and elements."
-        ),
+        model: { provider: "google-model" },
       })
     );
-    expect(result).toEqual({
-      json: `{
-  "root": "text-1",
-  "elements": {
-    "text-1": {
-      "type": "Text",
-      "props": {
-        "text": "Recovered",
-        "variant": null
-      },
-      "children": []
-    }
-  }
-}`,
-      spec: {
-        root: "text-1",
-        elements: {
-          "text-1": {
-            type: "Text",
-            props: {
-              text: "Recovered",
-              variant: null,
-            },
-            children: [],
-          },
-        },
-      },
-    });
-  });
-
-  it("applies patch-mode refinements when a starting spec is provided", async () => {
-    openai.mockReturnValue({ provider: "openai-model" });
-    generateText.mockResolvedValue({
-      text: '{"op":"replace","path":"/elements/text-1/props/text","value":"Updated"}',
-    });
-
-    const { generateJsonRender } = await import("@/lib/json-render/server");
-    const result = await generateJsonRender({
-      modelId: "gpt-5.4",
-      prompt: "Update the copy",
-      startingSpec: parseJsonRenderSpec(`{
-        "root": "text-1",
-        "elements": {
-          "text-1": {
-            "type": "Text",
-            "props": {
-              "text": "Ready",
-              "variant": null
-            },
-            "children": []
-          }
-        }
-      }`),
-    });
-
-    expect(generateText).toHaveBeenCalledWith({
-      model: { provider: "openai-model" },
-      system: expect.any(String),
-      prompt: expect.any(String),
-    });
-    expect(generateObject).not.toHaveBeenCalled();
-    expect(result).toEqual({
-      json: `{
-  "root": "text-1",
-  "elements": {
-    "text-1": {
-      "type": "Text",
-      "props": {
-        "text": "Updated",
-        "variant": null
-      },
-      "children": []
-    }
-  }
-}`,
-      spec: {
-        root: "text-1",
-        elements: {
-          "text-1": {
-            type: "Text",
-            props: {
-              text: "Updated",
-              variant: null,
-            },
-            children: [],
-          },
-        },
-      },
-    });
   });
 });

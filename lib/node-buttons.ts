@@ -12,13 +12,13 @@ export const nodeButtons = [
     icon: ImageIcon,
   },
   {
-    id: "json-render",
-    label: "Interface",
-    icon: PaintbrushIcon,
-  },
-  {
     id: "video",
     label: "Video",
     icon: FilmIcon,
+  },
+  {
+    id: "json-render",
+    label: "Interface",
+    icon: PaintbrushIcon,
   },
 ];

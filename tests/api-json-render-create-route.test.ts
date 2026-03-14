@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const generateJsonRender = vi.fn();
+const streamJsonRender = vi.fn();
 
 vi.mock("@/lib/json-render/server", () => ({
-  generateJsonRender,
+  streamJsonRender,
 }));
 
 describe("POST /api/json-render/create", () => {
@@ -23,7 +23,7 @@ describe("POST /api/json-render/create", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "Prompt must be a string" });
-    expect(generateJsonRender).not.toHaveBeenCalled();
+    expect(streamJsonRender).not.toHaveBeenCalled();
   });
 
   it("rejects a non-string model id", async () => {
@@ -87,25 +87,17 @@ describe("POST /api/json-render/create", () => {
     expect(await response.json()).toEqual({
       error: "Starting spec must be a valid json-render spec",
     });
-    expect(generateJsonRender).not.toHaveBeenCalled();
+    expect(streamJsonRender).not.toHaveBeenCalled();
   });
 
-  it("returns the generator payload unchanged", async () => {
-    generateJsonRender.mockResolvedValue({
-      json: '{"root":"text-1","elements":{"text-1":{"type":"Text","props":{"text":"Ready","variant":null},"children":[]}}}',
-      spec: {
-        root: "text-1",
-        elements: {
-          "text-1": {
-            type: "Text",
-            props: {
-              text: "Ready",
-              variant: null,
-            },
-            children: [],
-          },
+  it("streams patch text for valid requests", async () => {
+    streamJsonRender.mockReturnValue({
+      textStream: new ReadableStream({
+        start(controller) {
+          controller.enqueue('{"op":"add","path":"/root","value":"text-1"}\n');
+          controller.close();
         },
-      },
+      }),
     });
 
     const { POST } = await import("@/app/api/json-render/create/route");
@@ -118,27 +110,17 @@ describe("POST /api/json-render/create", () => {
       new Request("http://localhost/api/json-render/create", {
         method: "POST",
         body: JSON.stringify(requestBody),
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+        },
       })
     );
 
-    expect(generateJsonRender).toHaveBeenCalledWith(requestBody);
+    expect(streamJsonRender).toHaveBeenCalledWith(requestBody);
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      json: '{"root":"text-1","elements":{"text-1":{"type":"Text","props":{"text":"Ready","variant":null},"children":[]}}}',
-      spec: {
-        root: "text-1",
-        elements: {
-          "text-1": {
-            type: "Text",
-            props: {
-              text: "Ready",
-              variant: null,
-            },
-            children: [],
-          },
-        },
-      },
-    });
+    expect(response.headers.get("content-type")).toContain("text/plain");
+    expect(await response.text()).toBe(
+      '{"op":"add","path":"/root","value":"text-1"}\n'
+    );
   });
 });
