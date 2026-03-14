@@ -11,7 +11,6 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { useAnalytics } from "@/hooks/use-analytics";
 import { download } from "@/lib/download";
 import { handleError } from "@/lib/error/handle";
 import { generateVideoRequest } from "@/lib/media/client";
@@ -189,7 +188,6 @@ export const VideoTransform = ({
     videoModels,
   });
   const hasGeneratedVideo = typeof data.generated?.url === "string";
-  const analytics = useAnalytics();
 
   const handleGenerate = async () => {
     if (loading) {
@@ -210,13 +208,6 @@ export const VideoTransform = ({
       }
 
       setLoading(true);
-
-      analytics.track("canvas", "node", "generate", {
-        type,
-        promptLength: textPrompts.join("\n").length,
-        model: modelId,
-        instructionsLength: data.instructions?.length ?? 0,
-      });
 
       const response = await generateVideoRequest({
         modelId,

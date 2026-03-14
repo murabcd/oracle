@@ -18,7 +18,6 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { useAnalytics } from "@/hooks/use-analytics";
 import { download } from "@/lib/download";
 import { handleError } from "@/lib/error/handle";
 import { editImageRequest, generateImageRequest } from "@/lib/media/client";
@@ -61,7 +60,6 @@ export const ImageTransform = ({
   const [loading, setLoading] = useState(false);
   const { imageModels } = useModels();
   const modelId = data.model ?? getDefaultModel(imageModels);
-  const analytics = useAnalytics();
 
   const handleGenerate = useCallback(async () => {
     if (loading) {
@@ -78,14 +76,6 @@ export const ImageTransform = ({
       }
 
       setLoading(true);
-
-      analytics.track("canvas", "node", "generate", {
-        type,
-        textPromptsLength: textNodes.length,
-        imagePromptsLength: imageNodes.length,
-        model: modelId,
-        instructionsLength: data.instructions?.length ?? 0,
-      });
 
       const response = imageNodes.length
         ? await editImageRequest({
@@ -121,8 +111,6 @@ export const ImageTransform = ({
   }, [
     loading,
     id,
-    analytics,
-    type,
     data.instructions,
     getEdges,
     modelId,

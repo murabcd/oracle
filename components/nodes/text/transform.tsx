@@ -26,7 +26,6 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { useAnalytics } from "@/hooks/use-analytics";
 import { useReasoning } from "@/hooks/use-reasoning";
 import { handleError } from "@/lib/error/handle";
 import {
@@ -241,7 +240,6 @@ export const TextTransform = ({
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
   const { models } = useModels();
   const modelId = data.model ?? getDefaultModel(models);
-  const analytics = useAnalytics();
   const [reasoning, setReasoning] = useReasoning();
   const { sendMessage, messages, setMessages, status, stop } = useChat({
     transport: new DefaultChatTransport({
@@ -297,14 +295,6 @@ export const TextTransform = ({
       content.push("--- Image Descriptions ---", ...imageDescriptions);
     }
 
-    analytics.track("canvas", "node", "generate", {
-      type,
-      promptLength: content.join("\n").length,
-      model: modelId,
-      instructionsLength: data.instructions?.length ?? 0,
-      imageCount: images.length,
-    });
-
     const attachments: FileUIPart[] = [];
 
     for (const image of images) {
@@ -334,8 +324,6 @@ export const TextTransform = ({
     getNodes,
     id,
     modelId,
-    type,
-    analytics.track,
     setMessages,
   ]);
 

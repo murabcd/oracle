@@ -21,7 +21,6 @@ import type { MouseEvent, MouseEventHandler, SetStateAction } from "react";
 import { useCallback, useEffect, useReducer } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useDebouncedCallback } from "use-debounce";
-import { useAnalytics } from "@/hooks/use-analytics";
 import { loadCanvas, saveCanvas } from "@/lib/canvas-storage";
 import { isValidSourceTarget } from "@/lib/xyflow";
 import { NodeDropzoneProvider } from "@/providers/node-dropzone";
@@ -193,7 +192,6 @@ const useCanvasController = (props: ReactFlowProps) => {
     getNode,
     updateNode,
   } = useReactFlow();
-  const analytics = useAnalytics();
 
   const save = useDebouncedCallback(() => {
     const { nodes: currentNodes, edges: currentEdges } = toObject();
@@ -270,13 +268,9 @@ const useCanvasController = (props: ReactFlowProps) => {
       setNodes((current) => current.concat(newNode));
       save();
 
-      analytics.track("toolbar", "node", "added", {
-        type,
-      });
-
       return newNode.id;
     },
-    [save, analytics, setNodes]
+    [save, setNodes]
   );
 
   const duplicateNode = useCallback(
