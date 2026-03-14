@@ -162,7 +162,7 @@ export const NodeLayout = ({
             )}
             handles={{
               target: true,
-              source: type !== "video",
+              source: type !== "video" && type !== "json-render",
             }}
           >
             {type !== "drop" && (

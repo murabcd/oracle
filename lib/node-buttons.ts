@@ -1,4 +1,4 @@
-import { ImageIcon, TextIcon, VideoIcon } from "lucide-react";
+import { FilmIcon, ImageIcon, PaintbrushIcon, TextIcon } from "lucide-react";
 
 export const nodeButtons = [
   {
@@ -12,8 +12,13 @@ export const nodeButtons = [
     icon: ImageIcon,
   },
   {
+    id: "json-render",
+    label: "Interface",
+    icon: PaintbrushIcon,
+  },
+  {
     id: "video",
     label: "Video",
-    icon: VideoIcon,
+    icon: FilmIcon,
   },
 ];

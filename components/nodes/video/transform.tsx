@@ -301,7 +301,7 @@ export const VideoTransform = ({
       <Textarea
         className="shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
         onChange={handleInstructionsChange}
-        placeholder="Enter instructions"
+        placeholder="Enter instruction..."
         value={data.instructions ?? ""}
       />
     </NodeLayout>

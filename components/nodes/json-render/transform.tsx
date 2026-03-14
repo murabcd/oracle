@@ -1,11 +1,5 @@
 import { getIncomers, useReactFlow } from "@xyflow/react";
-import {
-  DownloadIcon,
-  Loader2Icon,
-  PlayIcon,
-  RotateCcwIcon,
-} from "lucide-react";
-import Image from "next/image";
+import { CopyIcon, Loader2Icon, PlayIcon, RotateCcwIcon } from "lucide-react";
 import {
   type ChangeEventHandler,
   type ComponentProps,
@@ -16,25 +10,27 @@ import {
 import { toast } from "sonner";
 import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { download } from "@/lib/download";
 import { handleError } from "@/lib/error/handle";
-import { editImageRequest, generateImageRequest } from "@/lib/media/client";
-import { getImagesFromImageNodes, getTextFromTextNodes } from "@/lib/xyflow";
+import { generateJsonRenderRequest } from "@/lib/json-render/client";
+import {
+  getDescriptionsFromImageNodes,
+  getTextFromTextNodes,
+} from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
-import type { ImageNodeProps } from ".";
+import type { JsonRenderNodeProps } from ".";
+import { JsonRenderPreview } from "./preview";
 
-type ImageTransformProps = ImageNodeProps & {
+type JsonRenderTransformProps = JsonRenderNodeProps & {
   title: string;
 };
 
 const getDefaultModel = (
-  models: Record<string, { default?: boolean }>
+  models: ReturnType<typeof useModels>["models"]
 ): string => {
   const defaultModel = Object.entries(models).find(
-    ([_, model]) => model.default
+    ([, model]) => model.default
   );
 
   if (defaultModel) {
@@ -44,22 +40,22 @@ const getDefaultModel = (
   const firstModel = Object.keys(models)[0];
 
   if (!firstModel) {
-    throw new Error("No image models available");
+    throw new Error("No text models available");
   }
 
   return firstModel;
 };
 
-export const ImageTransform = ({
+export const JsonRenderTransform = ({
   data,
   id,
   type,
   title,
-}: ImageTransformProps) => {
+}: JsonRenderTransformProps) => {
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
+  const { models } = useModels();
   const [loading, setLoading] = useState(false);
-  const { imageModels } = useModels();
-  const modelId = data.model ?? getDefaultModel(imageModels);
+  const modelId = data.model ?? getDefaultModel(models);
 
   const handleGenerate = useCallback(async () => {
     if (loading) {
@@ -67,56 +63,73 @@ export const ImageTransform = ({
     }
 
     const incomers = getIncomers({ id }, getNodes(), getEdges());
-    const textNodes = getTextFromTextNodes(incomers);
-    const imageNodes = getImagesFromImageNodes(incomers);
+    const textPrompts = getTextFromTextNodes(incomers);
+    const imageDescriptions = getDescriptionsFromImageNodes(incomers);
+
+    if (
+      !(textPrompts.length || imageDescriptions.length || data.instructions)
+    ) {
+      handleError("Error generating UI", "No prompts found");
+      return;
+    }
+
+    const content: string[] = [];
+
+    if (textPrompts.length) {
+      content.push("--- Text Context ---", ...textPrompts);
+    }
+
+    if (imageDescriptions.length) {
+      content.push("--- Image Context ---", ...imageDescriptions);
+    }
 
     try {
-      if (!(textNodes.length || imageNodes.length)) {
-        throw new Error("No input provided");
-      }
-
       setLoading(true);
 
-      const response = imageNodes.length
-        ? await editImageRequest({
-            images: imageNodes,
-            instructions: data.instructions,
-            modelId,
-          })
-        : await generateImageRequest({
-            prompt: textNodes.join("\n"),
-            modelId,
-            instructions: data.instructions,
-          });
+      const response = await generateJsonRenderRequest({
+        prompt: content.join("\n"),
+        modelId,
+        instructions: data.instructions,
+        startingSpec: data.generated?.spec,
+      });
 
       if ("error" in response) {
         throw new Error(response.error);
       }
 
       updateNodeData(id, {
-        updatedAt: new Date().toISOString(),
         generated: {
-          url: response.url,
-          type: response.type,
+          json: response.json,
+          spec: response.spec,
         },
-        description: response.description,
+        updatedAt: new Date().toISOString(),
       });
 
-      toast.success("Image generated");
+      toast.success("UI generated");
     } catch (error) {
-      handleError("Error generating image", error);
+      handleError("Error generating UI", error);
     } finally {
       setLoading(false);
     }
   }, [
-    loading,
-    id,
+    data.generated?.spec,
     data.instructions,
     getEdges,
-    modelId,
     getNodes,
+    id,
+    loading,
+    modelId,
     updateNodeData,
   ]);
+
+  const handleCopy = useCallback(() => {
+    if (!data.generated?.json) {
+      return;
+    }
+
+    navigator.clipboard.writeText(data.generated.json);
+    toast.success("JSON copied");
+  }, [data.generated?.json]);
 
   const handleInstructionsChange: ChangeEventHandler<HTMLTextAreaElement> = (
     event
@@ -133,16 +146,6 @@ export const ImageTransform = ({
   };
 
   const toolbar = useMemo<ComponentProps<typeof NodeLayout>["toolbar"]>(() => {
-    const availableModels = Object.fromEntries(
-      Object.entries(imageModels).map(([key, model]) => [
-        key,
-        {
-          ...model,
-          disabled: model.disabled,
-        },
-      ])
-    );
-
     const items: ComponentProps<typeof NodeLayout>["toolbar"] = [
       {
         id: `model-${id}`,
@@ -151,7 +154,7 @@ export const ImageTransform = ({
             className="w-[200px] rounded-full"
             id={id}
             onChange={(value) => updateNodeData(id, { model: value })}
-            options={availableModels}
+            options={models}
             value={modelId}
           />
         ),
@@ -171,15 +174,14 @@ export const ImageTransform = ({
           }
         : {
             id: `generate-${id}`,
-            tooltip: data.generated?.url ? "Regenerate" : "Generate",
+            tooltip: data.generated?.spec ? "Regenerate" : "Generate",
             children: (
               <Button
                 className="rounded-full"
-                disabled={loading}
                 onClick={handleGenerate}
                 size="icon"
               >
-                {data.generated?.url ? (
+                {data.generated?.spec ? (
                   <RotateCcwIcon size={12} />
                 ) : (
                   <PlayIcon size={12} />
@@ -189,18 +191,18 @@ export const ImageTransform = ({
           }
     );
 
-    if (data.generated) {
+    if (data.generated?.json) {
       items.push({
-        id: `download-${id}`,
-        tooltip: "Download",
+        id: `copy-${id}`,
+        tooltip: "Copy JSON",
         children: (
           <Button
             className="rounded-full"
-            onClick={() => download(data.generated, id, "png")}
+            onClick={handleCopy}
             size="icon"
             variant="ghost"
           >
-            <DownloadIcon size={12} />
+            <CopyIcon size={12} />
           </Button>
         ),
       });
@@ -208,50 +210,34 @@ export const ImageTransform = ({
 
     return items;
   }, [
-    modelId,
-    imageModels,
-    id,
-    updateNodeData,
-    loading,
-    data.generated,
+    data.generated?.json,
+    data.generated?.spec,
+    handleCopy,
     handleGenerate,
+    id,
+    loading,
+    modelId,
+    models,
+    updateNodeData,
   ]);
 
   return (
     <NodeLayout data={data} id={id} title={title} toolbar={toolbar} type={type}>
-      {loading ? (
-        <Skeleton
-          className="flex w-full animate-pulse items-center justify-center rounded-b-xl"
-          style={{ aspectRatio: "1/1" }}
-        >
-          <Loader2Icon
-            className="size-4 animate-spin text-muted-foreground"
-            size={16}
-          />
-        </Skeleton>
-      ) : null}
-      {!(loading || data.generated?.url) && (
-        <div
-          className="flex w-full items-center justify-center rounded-b-xl bg-secondary p-4"
-          style={{ aspectRatio: "1/1" }}
-        >
-          <p className="text-muted-foreground text-sm">
+      {data.generated?.spec ? (
+        <JsonRenderPreview
+          className="max-h-72 min-h-72"
+          spec={data.generated.spec}
+        />
+      ) : (
+        <div className="flex min-h-72 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary px-4 text-center">
+          <p className="max-w-56 text-pretty text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
-            create an image
+            generate a JSON-powered UI preview.
           </p>
         </div>
       )}
-      {!loading && data.generated?.url && (
-        <Image
-          alt="Generated image"
-          className="w-full rounded-b-xl object-cover"
-          height={1000}
-          src={data.generated.url}
-          width={1000}
-        />
-      )}
       <Textarea
-        className="shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
+        className="min-h-24 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
         onChange={handleInstructionsChange}
         placeholder="Enter instruction..."
         value={data.instructions ?? ""}
