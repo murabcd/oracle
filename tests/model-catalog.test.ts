@@ -28,8 +28,13 @@ describe("model catalog", () => {
     expect(defaults[0]?.[0]).toBe("gpt-image-1.5");
   });
 
-  it("starts with no video models configured", () => {
-    expect(Object.keys(videoModels)).toHaveLength(0);
+  it("exposes exactly one default video model", () => {
+    const defaults = Object.entries(videoModels).filter(
+      ([, model]) => model.default
+    );
+
+    expect(defaults).toHaveLength(1);
+    expect(defaults[0]?.[0]).toBe("veo-3.1-fast-generate-preview");
   });
 
   it("lists Gemini 3 text models before Gemini 2.5 text models", () => {
@@ -50,6 +55,7 @@ describe("model catalog", () => {
     for (const model of [
       ...Object.values(textModels),
       ...Object.values(imageModels),
+      ...Object.values(videoModels),
     ]) {
       expect(model.chef).toBeDefined();
       expect(model.providers.length).toBeGreaterThan(0);

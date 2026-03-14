@@ -1,6 +1,6 @@
 import { generateVideo } from "@/lib/media/server";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export const POST = async (request: Request) => {
   const body = await request.json();

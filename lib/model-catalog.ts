@@ -91,6 +91,24 @@ export const imageModels = {
   }),
 } satisfies Record<string, OracleModel>;
 
-export const videoModels = {} satisfies Record<string, OracleModel>;
+export const videoModels = {
+  "veo-3.1-fast-generate-preview": withGoogleProvider({
+    default: true,
+    label: "Veo 3.1 Fast Preview",
+    priceIndicator: "high",
+  }),
+  "veo-3.1-generate-preview": withGoogleProvider({
+    label: "Veo 3.1 Preview",
+    priceIndicator: "highest",
+  }),
+  "veo-3.0-fast-generate-001": withGoogleProvider({
+    label: "Veo 3 Fast",
+    priceIndicator: "low",
+  }),
+  "veo-2.0-generate-001": withGoogleProvider({
+    label: "Veo 2",
+    priceIndicator: "low",
+  }),
+} satisfies Record<string, OracleModel>;
 
 export const descriptionModelId = "gpt-5-nano";

@@ -1,7 +1,11 @@
 import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
 import { head, put } from "@vercel/blob";
-import { generateImage as generateImageAsset, generateText } from "ai";
+import {
+  generateImage as generateImageAsset,
+  generateText,
+  experimental_generateVideo as generateVideoAsset,
+} from "ai";
 import { nanoid } from "nanoid";
 import { parseError } from "@/lib/error/parse";
 import type {
@@ -31,6 +35,20 @@ const getImageModel = (modelId: string) => {
   return model.chef.id === "google"
     ? google.image(modelId)
     : openai.image(modelId);
+};
+
+const getVideoModel = (modelId: string) => {
+  if (!(modelId in videoModels)) {
+    throw new Error("Invalid video model");
+  }
+
+  const model = videoModels[modelId as keyof typeof videoModels] as OracleModel;
+
+  if (model.chef.id !== "google") {
+    throw new Error(`Unsupported video provider: ${model.chef.id}`);
+  }
+
+  return google.video(modelId);
 };
 
 export async function describeImage(
@@ -165,19 +183,55 @@ export async function editImage(
   }
 }
 
-export function generateVideo(
+export async function generateVideo(
   input: GenerateVideoInput
-): GeneratedVideoSuccess | ErrorResponse {
+): Promise<GeneratedVideoSuccess | ErrorResponse> {
   try {
-    if (!(input.modelId in videoModels)) {
-      throw new Error(
-        "Video generation is unavailable with the current direct OpenAI AI SDK setup."
-      );
+    const imageUrl = input.image;
+    const prompt = imageUrl
+      ? {
+          image: await (async () => {
+            const validatedUrl = assertBlobUrl(imageUrl);
+            const blob = await head(validatedUrl.toString());
+            const response = await fetch(blob.downloadUrl);
+            const buffer = await response.arrayBuffer();
+
+            return new Uint8Array(buffer);
+          })(),
+          text: input.prompt,
+        }
+      : input.prompt;
+
+    const { video } = await generateVideoAsset({
+      model: getVideoModel(input.modelId),
+      prompt,
+      abortSignal: AbortSignal.timeout(270_000),
+      providerOptions: {
+        google: {
+          pollTimeoutMs: 240_000,
+        },
+      },
+    });
+
+    let extension = video.mediaType.split("/").pop() ?? "mp4";
+
+    if (extension === "quicktime") {
+      extension = "mov";
     }
 
-    throw new Error(
-      "Video generation is unavailable with the current direct OpenAI AI SDK setup."
+    const blob = await put(
+      `${nanoid()}.${extension}`,
+      Buffer.from(video.base64, "base64"),
+      {
+        access: "public",
+        contentType: video.mediaType,
+      }
     );
+
+    return {
+      url: blob.url,
+      type: video.mediaType,
+    };
   } catch (error) {
     return { error: parseError(error) };
   }

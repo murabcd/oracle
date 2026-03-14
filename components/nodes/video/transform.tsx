@@ -198,9 +198,7 @@ export const VideoTransform = ({
 
     try {
       if (!hasVideoGeneration) {
-        throw new Error(
-          "Video generation is unavailable with the current direct OpenAI AI SDK setup."
-        );
+        throw new Error("Video generation is not configured in this app.");
       }
 
       const incomers = getIncomers({ id }, getNodes(), getEdges());
@@ -285,7 +283,7 @@ export const VideoTransform = ({
       {!(loading || data.generated?.url || hasVideoGeneration) && (
         <div className="flex aspect-video w-full items-center justify-center rounded-b-xl bg-secondary px-4 text-center">
           <p className="text-muted-foreground text-sm">
-            Direct OpenAI AI SDK video generation is not configured in this app.
+            Video generation is not configured in this app.
           </p>
         </div>
       )}
