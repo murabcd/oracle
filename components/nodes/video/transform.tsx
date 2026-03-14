@@ -262,9 +262,17 @@ export const VideoTransform = ({
   };
 
   return (
-    <NodeLayout data={data} id={id} title={title} toolbar={toolbar} type={type}>
+    <NodeLayout
+      bodyClassName="flex h-full flex-col"
+      contentClassName="h-full"
+      data={data}
+      id={id}
+      title={title}
+      toolbar={toolbar}
+      type={type}
+    >
       {loading ? (
-        <Skeleton className="flex aspect-video w-full animate-pulse items-center justify-center rounded-b-xl">
+        <Skeleton className="flex min-h-72 flex-1 animate-pulse items-center justify-center rounded-b-xl">
           <Loader2Icon
             className="size-4 animate-spin text-muted-foreground"
             size={16}
@@ -272,14 +280,14 @@ export const VideoTransform = ({
         </Skeleton>
       ) : null}
       {!(loading || data.generated?.url || hasVideoGeneration) && (
-        <div className="flex aspect-video w-full items-center justify-center rounded-b-xl bg-secondary px-4 text-center">
+        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary px-4 text-center">
           <p className="text-muted-foreground text-sm">
             Video generation is not configured in this app.
           </p>
         </div>
       )}
       {!(loading || hasGeneratedVideo) && hasVideoGeneration && (
-        <div className="flex aspect-video w-full items-center justify-center rounded-b-xl bg-secondary">
+        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary">
           <p className="text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
             generate video
@@ -289,7 +297,7 @@ export const VideoTransform = ({
       {hasGeneratedVideo && !loading ? (
         <video
           autoPlay
-          className="w-full rounded-b-xl object-cover"
+          className="min-h-72 flex-1 rounded-b-xl object-contain"
           height={data.height ?? 450}
           loop
           muted

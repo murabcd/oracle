@@ -58,9 +58,16 @@ export const VideoPrimitive = ({
   };
 
   return (
-    <NodeLayout data={data} id={id} title={title} type={type}>
+    <NodeLayout
+      bodyClassName="flex h-full flex-col"
+      contentClassName="h-full"
+      data={data}
+      id={id}
+      title={title}
+      type={type}
+    >
       {isUploading ? (
-        <Skeleton className="flex aspect-video w-full animate-pulse items-center justify-center">
+        <Skeleton className="flex min-h-72 flex-1 animate-pulse items-center justify-center">
           <Loader2Icon
             className="size-4 animate-spin text-muted-foreground"
             size={16}
@@ -70,7 +77,7 @@ export const VideoPrimitive = ({
       {!isUploading && data.content && (
         <video
           autoPlay
-          className="h-auto w-full"
+          className="min-h-72 flex-1 object-contain"
           loop
           muted
           src={data.content.url}
@@ -81,7 +88,7 @@ export const VideoPrimitive = ({
           accept={{
             "video/*": [],
           }}
-          className="rounded-none border-none bg-transparent shadow-none hover:bg-transparent dark:bg-transparent dark:hover:bg-transparent"
+          className="min-h-72 flex-1 rounded-none border-none bg-transparent shadow-none hover:bg-transparent dark:bg-transparent dark:hover:bg-transparent"
           maxFiles={1}
           maxSize={1024 * 1024 * 10}
           minSize={1024}

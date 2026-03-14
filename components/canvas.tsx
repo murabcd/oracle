@@ -22,6 +22,10 @@ import { useCallback, useEffect, useReducer } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useDebouncedCallback } from "use-debounce";
 import { loadCanvas, saveCanvas } from "@/lib/canvas-storage";
+import {
+  applyDefaultNodeWidth,
+  getNodeStyleWithDefaultWidth,
+} from "@/lib/node-style";
 import { isValidSourceTarget } from "@/lib/xyflow";
 import { NodeDropzoneProvider } from "@/providers/node-dropzone";
 import { NodeOperationsProvider } from "@/providers/node-operations";
@@ -73,14 +77,14 @@ const withNodeTimestamps = (node: Node, fallbackTimestamp: string): Node => {
   const updatedAt =
     typeof data.updatedAt === "string" ? data.updatedAt : createdAt;
 
-  return {
+  return applyDefaultNodeWidth({
     ...node,
     data: {
       ...data,
       createdAt,
       updatedAt,
     },
-  };
+  });
 };
 
 const canvasReducer = (
@@ -262,6 +266,17 @@ const useCanvasController = (props: ReactFlowProps) => {
         },
         position: { x: 0, y: 0 },
         origin: [0, 0.5],
+        style: getNodeStyleWithDefaultWidth({
+          style:
+            typeof nodeOptions.style === "object" && nodeOptions.style !== null
+              ? nodeOptions.style
+              : undefined,
+          type,
+          width:
+            typeof nodeOptions.width === "number"
+              ? nodeOptions.width
+              : undefined,
+        }),
         ...nodeOptions,
       };
 

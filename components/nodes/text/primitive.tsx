@@ -37,8 +37,16 @@ export const TextPrimitive = ({
   };
 
   return (
-    <NodeLayout className="p-0" data={data} id={id} title={title} type={type}>
-      <div className="nowheel h-full max-h-[30rem] overflow-auto rounded-3xl">
+    <NodeLayout
+      bodyClassName="h-full"
+      className="p-0"
+      contentClassName="h-full"
+      data={data}
+      id={id}
+      title={title}
+      type={type}
+    >
+      <div className="nowheel h-full overflow-auto rounded-3xl">
         <EditorProvider
           className={cn(
             "prose prose-sm dark:prose-invert size-full p-6",

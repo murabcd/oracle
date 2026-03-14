@@ -218,12 +218,17 @@ export const ImageTransform = ({
   ]);
 
   return (
-    <NodeLayout data={data} id={id} title={title} toolbar={toolbar} type={type}>
+    <NodeLayout
+      bodyClassName="flex h-full flex-col"
+      contentClassName="h-full"
+      data={data}
+      id={id}
+      title={title}
+      toolbar={toolbar}
+      type={type}
+    >
       {loading ? (
-        <Skeleton
-          className="flex w-full animate-pulse items-center justify-center rounded-b-xl"
-          style={{ aspectRatio: "1/1" }}
-        >
+        <Skeleton className="flex min-h-72 flex-1 animate-pulse items-center justify-center rounded-b-xl">
           <Loader2Icon
             className="size-4 animate-spin text-muted-foreground"
             size={16}
@@ -231,10 +236,7 @@ export const ImageTransform = ({
         </Skeleton>
       ) : null}
       {!(loading || data.generated?.url) && (
-        <div
-          className="flex w-full items-center justify-center rounded-b-xl bg-secondary p-4"
-          style={{ aspectRatio: "1/1" }}
-        >
+        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary p-4">
           <p className="text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
             create an image
@@ -244,7 +246,7 @@ export const ImageTransform = ({
       {!loading && data.generated?.url && (
         <Image
           alt="Generated image"
-          className="w-full rounded-b-xl object-cover"
+          className="min-h-72 flex-1 rounded-b-xl object-contain"
           height={1000}
           src={data.generated.url}
           width={1000}

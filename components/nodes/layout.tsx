@@ -1,4 +1,4 @@
-import { useReactFlow } from "@xyflow/react";
+import { NodeResizer, useInternalNode, useReactFlow } from "@xyflow/react";
 import { CodeIcon, CopyIcon, EyeIcon, TrashIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import {
@@ -43,6 +43,8 @@ interface NodeLayoutProps {
     children: ReactNode;
   }[];
   className?: string;
+  contentClassName?: string;
+  bodyClassName?: string;
 }
 
 const formatUpdatedAt = (value: string) => {
@@ -77,8 +79,12 @@ export const NodeLayout = ({
   toolbar,
   title,
   className,
+  contentClassName,
+  bodyClassName,
 }: NodeLayoutProps) => {
-  const { deleteElements, setCenter, getNode, updateNode } = useReactFlow();
+  const internalNode = useInternalNode(id);
+  const { deleteElements, setCenter, getNode, updateNode, updateNodeData } =
+    useReactFlow();
   const { duplicateNode } = useNodeOperations();
   const [showData, setShowData] = useState(false);
   const createdAt = data?.createdAt
@@ -148,6 +154,25 @@ export const NodeLayout = ({
     }
   };
 
+  const handleResizeEnd = (
+    _event: unknown,
+    params: { width: number; height: number }
+  ) => {
+    updateNode(id, {
+      style: {
+        ...(internalNode?.style ?? {}),
+        width: params.width,
+        height: params.height,
+      },
+    });
+
+    if (type !== "drop") {
+      updateNodeData(id, {
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  };
+
   return (
     <>
       {type !== "drop" && Boolean(toolbar?.length) && (
@@ -165,6 +190,25 @@ export const NodeLayout = ({
               source: type !== "video" && type !== "json-render",
             }}
           >
+            {type !== "drop" && (
+              <NodeResizer
+                autoScale={false}
+                handleStyle={{
+                  background: "transparent",
+                  border: "none",
+                  height: 16,
+                  opacity: 0,
+                  width: 16,
+                }}
+                isVisible={Boolean(internalNode?.selected)}
+                lineStyle={{
+                  borderColor: "transparent",
+                }}
+                minHeight={120}
+                minWidth={240}
+                onResizeEnd={handleResizeEnd}
+              />
+            )}
             {type !== "drop" && (
               <NodeHeader className="flex! items-center! absolute -top-6 left-0 mb-3 w-auto! flex-row! gap-1 border-none bg-transparent p-0!">
                 <NodeTitle className="shrink-0 font-mono font-normal text-foreground text-xs leading-none">
@@ -189,8 +233,18 @@ export const NodeLayout = ({
                 ) : null}
               </NodeHeader>
             )}
-            <NodeContent className="rounded-[28px] bg-card p-2 ring-1 ring-border">
-              <div className="overflow-hidden rounded-3xl bg-card">
+            <NodeContent
+              className={cn(
+                "rounded-[28px] bg-card p-2 ring-1 ring-border",
+                contentClassName
+              )}
+            >
+              <div
+                className={cn(
+                  "overflow-hidden rounded-3xl bg-card",
+                  bodyClassName
+                )}
+              >
                 {children}
               </div>
             </NodeContent>

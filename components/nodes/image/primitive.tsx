@@ -70,9 +70,16 @@ export const ImagePrimitive = ({
   };
 
   return (
-    <NodeLayout data={data} id={id} title={title} type={type}>
+    <NodeLayout
+      bodyClassName="flex h-full flex-col"
+      contentClassName="h-full"
+      data={data}
+      id={id}
+      title={title}
+      type={type}
+    >
       {isUploading ? (
-        <Skeleton className="flex aspect-video w-full animate-pulse items-center justify-center">
+        <Skeleton className="flex min-h-72 flex-1 animate-pulse items-center justify-center">
           <Loader2Icon
             className="size-4 animate-spin text-muted-foreground"
             size={16}
@@ -82,7 +89,7 @@ export const ImagePrimitive = ({
       {!isUploading && data.content && (
         <Image
           alt="Image"
-          className="h-auto w-full"
+          className="min-h-72 flex-1 object-contain"
           height={data.height ?? 1000}
           src={data.content.url}
           width={data.width ?? 1000}
@@ -93,7 +100,7 @@ export const ImagePrimitive = ({
           accept={{
             "image/*": [],
           }}
-          className="rounded-none border-none bg-transparent p-0 shadow-none hover:bg-transparent dark:bg-transparent dark:hover:bg-transparent"
+          className="min-h-72 flex-1 rounded-none border-none bg-transparent p-0 shadow-none hover:bg-transparent dark:bg-transparent dark:hover:bg-transparent"
           maxFiles={1}
           maxSize={1024 * 1024 * 10}
           minSize={1024}

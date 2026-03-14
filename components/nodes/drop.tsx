@@ -10,6 +10,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { nodeButtons } from "@/lib/node-buttons";
+import { getNodeStyleWithDefaultWidth } from "@/lib/node-style";
 import { NodeLayout } from "./layout";
 
 interface DropNodeProps {
@@ -20,13 +21,54 @@ interface DropNodeProps {
   id: string;
 }
 
+const buildReplacementNode = ({
+  options,
+  position,
+  type,
+}: {
+  options?: Record<string, unknown>;
+  position: XYPosition;
+  type: string;
+}) => {
+  const { data: nodeData, ...rest } = options ?? {};
+  const timestamp = new Date().toISOString();
+  const nextData =
+    nodeData && typeof nodeData === "object"
+      ? (nodeData as Record<string, unknown>)
+      : {};
+  const createdAt =
+    typeof nextData.createdAt === "string" ? nextData.createdAt : timestamp;
+  const updatedAt =
+    typeof nextData.updatedAt === "string" ? nextData.updatedAt : createdAt;
+
+  return {
+    id: nanoid(),
+    type,
+    position,
+    data: {
+      ...nextData,
+      createdAt,
+      updatedAt,
+    },
+    origin: [0, 0.5] as [number, number],
+    style: getNodeStyleWithDefaultWidth({
+      style:
+        typeof rest.style === "object" && rest.style !== null
+          ? rest.style
+          : undefined,
+      type,
+      width: typeof rest.width === "number" ? rest.width : undefined,
+    }),
+    ...rest,
+  };
+};
+
 export const DropNode = ({ data, id }: DropNodeProps) => {
   const { addNodes, deleteElements, getNode, addEdges, getNodeConnections } =
     useReactFlow();
   const ref = useRef<HTMLDivElement>(null);
 
   const handleSelect = (type: string, options?: Record<string, unknown>) => {
-    // Get the position of the current node
     const currentNode = getNode(id);
     const position = currentNode?.position || { x: 0, y: 0 };
     const sourceNodes = getNodeConnections({
@@ -38,37 +80,19 @@ export const DropNode = ({ data, id }: DropNodeProps) => {
       nodes: [{ id }],
     });
 
-    const newNodeId = nanoid();
-    const { data: nodeData, ...rest } = options ?? {};
-    const timestamp = new Date().toISOString();
-    const nextData =
-      nodeData && typeof nodeData === "object"
-        ? (nodeData as Record<string, unknown>)
-        : {};
-    const createdAt =
-      typeof nextData.createdAt === "string" ? nextData.createdAt : timestamp;
-    const updatedAt =
-      typeof nextData.updatedAt === "string" ? nextData.updatedAt : createdAt;
-
-    // Add the new node of the selected type
-    addNodes({
-      id: newNodeId,
-      type,
+    const newNode = buildReplacementNode({
+      options,
       position,
-      data: {
-        ...nextData,
-        createdAt,
-        updatedAt,
-      },
-      origin: [0, 0.5],
-      ...rest,
+      type,
     });
+
+    addNodes(newNode);
 
     for (const sourceNode of sourceNodes) {
       addEdges({
         id: nanoid(),
-        source: data.isSource ? newNodeId : sourceNode.source,
-        target: data.isSource ? sourceNode.source : newNodeId,
+        source: data.isSource ? newNode.id : sourceNode.source,
+        target: data.isSource ? sourceNode.source : newNode.id,
         type: "animated",
       });
     }
