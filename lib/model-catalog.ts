@@ -45,13 +45,13 @@ export const textModels = {
     label: "Gemini 3.1 Pro Preview",
     priceIndicator: "high",
   }),
-  "gemini-2.5-pro": withGoogleProvider({
-    label: "Gemini 2.5 Pro",
-    priceIndicator: "high",
-  }),
   "gemini-3-flash-preview": withGoogleProvider({
     label: "Gemini 3 Flash Preview",
     priceIndicator: "low",
+  }),
+  "gemini-2.5-pro": withGoogleProvider({
+    label: "Gemini 2.5 Pro",
+    priceIndicator: "high",
   }),
   "gemini-2.5-flash": withGoogleProvider({
     label: "Gemini 2.5 Flash",

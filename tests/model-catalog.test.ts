@@ -32,6 +32,20 @@ describe("model catalog", () => {
     expect(Object.keys(videoModels)).toHaveLength(0);
   });
 
+  it("lists Gemini 3 text models before Gemini 2.5 text models", () => {
+    const googleTextModelIds = Object.entries(textModels)
+      .filter(([, model]) => model.chef.id === "google")
+      .map(([modelId]) => modelId);
+
+    expect(googleTextModelIds).toEqual([
+      "gemini-3.1-pro-preview",
+      "gemini-3-flash-preview",
+      "gemini-2.5-pro",
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
+    ]);
+  });
+
   it("assigns each model at least one provider and a chef", () => {
     for (const model of [
       ...Object.values(textModels),
