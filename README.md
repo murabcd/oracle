@@ -24,35 +24,23 @@
   - Unified API for generating text, structured objects, and tool calls with LLMs
   - Hooks for building dynamic chat and generative user interfaces
   - Assisting with code generation, images, text editing, handling data, and searching the web
-- [Redis](https://vercel.com/marketplace/redis)
-  - Persistent message streaming for real-time updates
 - [Shadcn/ui](https://ui.shadcn.com)
   - Styling with [Tailwind CSS](https://tailwindcss.com)
   - Component primitives from [Radix UI](https://radix-ui.com) for accessibility and flexibility
-- Data Persistence
-  - [Convex](https://www.convex.dev/) for saving chat history and user data
-  - [Convex file storage](https://docs.convex.dev/file-storage) for efficient file storage
-  - [Convex Vector Search](https://docs.convex.dev/search/vector-search) for long-term memory storage and retrieval
-- [Convex Auth](https://labs.convex.dev/auth)
-  - Simple and secure authentication
 
 ## Model Providers
 
-This app ships with [Openai](https://openai.com/) provider as the default. However, with the [AI SDK](https://sdk.vercel.ai/docs), you can switch LLM providers to [Ollama](https://ollama.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://sdk.vercel.ai/providers/ai-sdk-providers) with just a few lines of code.
-
-- Mini model (`gpt-4o-mini`): A fast and efficient model suitable for simple tasks
-- Large model (`gpt-4o`): A powerful model designed for complex tasks
-- Reasoning model (`o4-mini`): An advanced model configured for multi-step reasoning tasks
+This app ships with [OpenAI](https://openai.com/) provider as the default. However, with the [AI SDK](https://sdk.vercel.ai/docs), you can switch LLM providers to [Ollama](https://ollama.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://sdk.vercel.ai/providers/ai-sdk-providers) with just a few lines of code.
 
 ## Deploy Your Own
 
-You can deploy your own version of the OpenChat to Vercel with one click:
+You can deploy your own version of the Oracle to Vercel with one click:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmurabcd%2Fopenchat&env=CONVEX_DEPLOY_KEY,OPENAI_API_KEY&envDescription=Learn%20more%20about%20how%20to%20get%20the%20API%20Keys%20for%20the%20application&envLink=https%3A%2F%2Fgithub.com%2Fmurabcd%2Fopenchat%2Fblob%2Fmain%2F.env.example&demo-title=OpenChat&demo-description=An%20open-source%20AI%20chatbot%20built%20with%20Next.js%2015%2C%20Convex%2C%20and%20AI%20SDK.&demo-url=https%3A%2F%2Fopenchat-beta.vercel.app)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmurabcd%2Foracle&env=OPENAI_API_KEY,GOOGLE_GENERATIVE_AI_API_KEY,BLOB_READ_WRITE_TOKEN&envDescription=Add%20the%20API%20keys%20and%20Blob%20token%20required%20for%20Oracle%20text%2C%20image%2C%20and%20video%20generation.&envLink=https%3A%2F%2Fgithub.com%2Fmurabcd%2Foracle%2Fblob%2Fmain%2F.env.example&demo-title=Oracle&demo-description=An%20open-source%20visual%20AI%20playground%20for%20text%2C%20image%2C%20and%20video%20workflows.&demo-url=https%3A%2F%2Foracle-beta.vercel.app)
 
 ## Running locally
 
-You will need to use the environment variables [defined in `.env.example`](.env.example) to run OpenChat. It's recommended you use [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables) for this, but a `.env` file is all that is necessary.
+You will need to use the environment variables [defined in `.env.example`](.env.example) to run oracle. It's recommended you use [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables) for this, but a `.env` file is all that is necessary.
 
 > Note: You should not commit your `.env` file or it will expose secrets that will allow others to control access to your various OpenAI and authentication provider accounts.
 
