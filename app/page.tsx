@@ -5,7 +5,7 @@ import { Toolbar } from "@/components/toolbar";
 import { ModelsProvider } from "@/providers/models/client";
 import { ReactFlowProvider } from "../providers/react-flow";
 
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 const Index = () => (
   <ModelsProvider>

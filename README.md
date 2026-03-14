@@ -4,13 +4,13 @@
 </a>
 
 <p align="center">
-  An Open-source Visual AI Plaground Built With Next.js and AI SDK.
+  Open-source Visual AI Plaground Built With Next.js and AI SDK.
 </p>
 
 <p align="center">
   <a href="#features"><strong>Features</strong></a> ·
-  <a href="#model-providers"><strong>Model Providers</strong></a> ·
-  <a href="#deploy-your-own"><strong>Deploy Your Own</strong></a> ·
+  <a href="#model-providers"><strong>Model providers</strong></a> ·
+  <a href="#deploy-your-own"><strong>Deploy your own</strong></a> ·
   <a href="#running-locally"><strong>Running locally</strong></a>
 </p>
 <br/>
@@ -27,11 +27,11 @@
   - Styling with [Tailwind CSS](https://tailwindcss.com)
   - Component primitives from [Radix UI](https://radix-ui.com) for accessibility and flexibility
 
-## Model Providers
+## Model providers
 
 This app ships with [OpenAI](https://openai.com/) provider as the default. However, with the [AI SDK](https://sdk.vercel.ai/docs), you can switch LLM providers to [Ollama](https://ollama.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://sdk.vercel.ai/providers/ai-sdk-providers) with just a few lines of code.
 
-## Deploy Your Own
+## Deploy your own
 
 You can deploy your own version of the Oracle to Vercel with one click:
 
