@@ -236,7 +236,7 @@ export const VideoTransform = ({
         },
       });
 
-      toast.success("Video generated successfully");
+      toast.success("Video generated");
     } catch (error) {
       handleError("Error generating video", error);
     } finally {

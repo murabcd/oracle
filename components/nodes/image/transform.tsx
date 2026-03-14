@@ -112,7 +112,7 @@ export const ImageTransform = ({
         description: response.description,
       });
 
-      toast.success("Image generated successfully");
+      toast.success("Image generated");
     } catch (error) {
       handleError("Error generating image", error);
     } finally {

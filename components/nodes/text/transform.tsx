@@ -268,7 +268,7 @@ export const TextTransform = ({
         isGenerating: false,
       }));
 
-      toast.success("Text generated successfully");
+      toast.success("Text generated");
     },
   });
 
