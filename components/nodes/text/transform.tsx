@@ -1,6 +1,6 @@
 import { useChat } from "@ai-sdk/react";
 import { getIncomers, useNodeConnections, useReactFlow } from "@xyflow/react";
-import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import {
   CopyIcon,
   GlobeIcon,
@@ -40,11 +40,15 @@ import {
   filterModelsByWebSearch,
 } from "@/lib/model-catalog";
 import {
-  getDescriptionsFromImageNodes,
-  getImagesFromImageNodes,
-  getTextFromTextNodes,
-  getVideosFromVideoNodes,
-} from "@/lib/xyflow";
+  markNodeError,
+  markNodeRunning,
+  patchNodeConfig,
+  replaceNodeResult,
+} from "@/lib/node-data";
+import {
+  buildTextNodeExecutionInput,
+  getTextResultFromMessage,
+} from "@/lib/nodes/text-execution";
 import { useModels } from "@/providers/models/client";
 import { ReasoningTunnel } from "@/tunnels/reasoning";
 import { ModelSelector } from "../model-selector";
@@ -132,7 +136,14 @@ const buildTextToolbar = ({
           className="w-[200px] rounded-full"
           disabled={!hasAvailableModels}
           key={id}
-          onChange={(value) => updateNodeData(id, { model: value })}
+          onChange={(value) =>
+            updateNodeData(
+              id,
+              patchNodeConfig(data, {
+                model: value,
+              })
+            )
+          }
           options={models}
           value={modelId}
         />
@@ -164,13 +175,13 @@ const buildTextToolbar = ({
         </Button>
       ),
     });
-  } else if (messages.length || data.generated?.text) {
+  } else if (messages.length || data.result?.text) {
     const text = messages.length
       ? messages
           .filter((message) => message.role === "assistant")
           .map(getMessageText)
           .join("\n")
-      : data.generated?.text;
+      : data.result?.text;
 
     items.push(
       {
@@ -248,12 +259,12 @@ const TextTransformOutput = ({
         <Skeleton className="h-4 w-50 animate-pulse rounded-lg" />
       </div>
     )}
-    {typeof data.generated?.text === "string" &&
+    {typeof data.result?.text === "string" &&
     nonUserMessages.length === 0 &&
     status !== "submitted" ? (
-      <ReactMarkdown>{data.generated.text}</ReactMarkdown>
+      <ReactMarkdown>{data.result.text}</ReactMarkdown>
     ) : null}
-    {!(data.generated?.text || nonUserMessages.length) &&
+    {!(data.result?.text || nonUserMessages.length) &&
       status !== "submitted" && (
         <div className="flex aspect-video w-full items-center justify-center bg-secondary/60">
           <p className="text-muted-foreground text-sm">
@@ -327,36 +338,42 @@ export const TextTransform = ({
     () =>
       filterModelsByWebSearch(
         filterModelsByVideoInput(models, hasVideoInput),
-        data.webSearchEnabled === true
+        data.config.webSearchEnabled === true
       ),
-    [data.webSearchEnabled, hasVideoInput, models]
+    [data.config.webSearchEnabled, hasVideoInput, models]
   );
   const hasAvailableModels = Object.keys(availableModels).length > 0;
   const modelId = getSelectedModelId({
     availableModels,
-    model: data.model,
+    model: data.config.model,
   });
-  const webSearchEnabled = data.webSearchEnabled === true;
+  const webSearchEnabled = data.config.webSearchEnabled === true;
   const [reasoning, setReasoning] = useReasoning();
   const { sendMessage, messages, setMessages, status, stop } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
     }),
-    onError: (error) => handleError("Error generating text", error),
+    onError: (error) => {
+      updateNodeData(
+        id,
+        markNodeError(
+          data,
+          error instanceof Error ? error.message : "Failed to generate text"
+        )
+      );
+      handleError("Error generating text", error);
+    },
     onFinish: ({ message, isError }) => {
       if (isError) {
+        updateNodeData(id, markNodeError(data, "Please try again later."));
         handleError("Error generating text", "Please try again later.");
         return;
       }
 
-      updateNodeData(id, {
-        generated: {
-          text: message.parts.find((part) => part.type === "text")?.text ?? "",
-          sources:
-            message.parts?.filter((part) => part.type === "source-url") ?? [],
-        },
-        updatedAt: new Date().toISOString(),
-      });
+      updateNodeData(
+        id,
+        replaceNodeResult(data, getTextResultFromMessage(message))
+      );
 
       setReasoning((oldReasoning) => ({
         ...oldReasoning,
@@ -374,78 +391,42 @@ export const TextTransform = ({
     }
 
     const incomers = getIncomers({ id }, getNodes(), getEdges());
-    const textPrompts = getTextFromTextNodes(incomers);
-    const images = getImagesFromImageNodes(incomers);
-    const imageDescriptions = getDescriptionsFromImageNodes(incomers);
-    const videos = getVideosFromVideoNodes(incomers);
-
-    if (
-      !(
-        textPrompts.length ||
-        imageDescriptions.length ||
-        images.length ||
-        videos.length ||
-        data.instructions
-      )
-    ) {
-      handleError("Error generating text", "No prompts found");
-      return;
-    }
-
-    const content: string[] = [];
-
-    if (data.instructions) {
-      content.push("--- Instructions ---", data.instructions);
-    }
-
-    if (textPrompts.length) {
-      content.push("--- Text Prompts ---", ...textPrompts);
-    }
-
-    if (imageDescriptions.length) {
-      content.push("--- Image Descriptions ---", ...imageDescriptions);
-    }
-
-    const attachments: FileUIPart[] = [];
-
-    for (const image of images) {
-      attachments.push({
-        mediaType: image.type,
-        url: image.url,
-        type: "file",
+    try {
+      const { attachments, prompt } = buildTextNodeExecutionInput({
+        incomers,
+        instructions: data.config.instructions,
       });
-    }
 
-    for (const video of videos) {
-      attachments.push({
-        mediaType: video.type,
-        url: video.url,
-        type: "file",
-      });
-    }
-
-    setMessages([]);
-    await sendMessage(
-      {
-        text: content.join("\n") || "Use the provided media as context.",
-        files: attachments,
-      },
-      {
-        body: {
-          modelId,
-          webSearchEnabled,
+      updateNodeData(id, markNodeRunning(data));
+      setMessages([]);
+      await sendMessage(
+        {
+          files: attachments,
+          text: prompt,
         },
-      }
-    );
+        {
+          body: {
+            modelId,
+            webSearchEnabled,
+          },
+        }
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Please try again later.";
+      updateNodeData(id, markNodeError(data, message));
+      handleError("Error generating text", error);
+    }
   }, [
     sendMessage,
-    data.instructions,
+    data,
     getEdges,
     getNodes,
     hasAvailableModels,
     id,
     modelId,
     setMessages,
+    updateNodeData,
     webSearchEnabled,
   ]);
 
@@ -453,14 +434,20 @@ export const TextTransform = ({
     event
   ) => {
     const nextInstructions = event.target.value;
-    const hasExistingInstructions = Boolean(data.instructions?.trim().length);
+    const hasExistingInstructions = Boolean(
+      data.config.instructions?.trim().length
+    );
 
-    updateNodeData(id, {
-      instructions: nextInstructions,
-      ...(hasExistingInstructions
-        ? { updatedAt: new Date().toISOString() }
-        : {}),
-    });
+    updateNodeData(
+      id,
+      patchNodeConfig(
+        data,
+        {
+          instructions: nextInstructions,
+        },
+        hasExistingInstructions ? new Date().toISOString() : data.meta.updatedAt
+      )
+    );
   };
 
   const handleCopy = useCallback((text: string) => {
@@ -474,11 +461,13 @@ export const TextTransform = ({
   });
 
   const handleToggleWebSearch = useCallback(() => {
-    updateNodeData(id, {
-      updatedAt: new Date().toISOString(),
-      webSearchEnabled: !webSearchEnabled,
-    });
-  }, [id, updateNodeData, webSearchEnabled]);
+    updateNodeData(
+      id,
+      patchNodeConfig(data, {
+        webSearchEnabled: !webSearchEnabled,
+      })
+    );
+  }, [data, id, updateNodeData, webSearchEnabled]);
 
   const toolbar = useMemo(
     () =>
@@ -546,7 +535,7 @@ export const TextTransform = ({
         onChange={handleInstructionsChange}
         placeholder="Enter instruction..."
         ref={textareaHotkeysRef}
-        value={data.instructions ?? ""}
+        value={data.config.instructions ?? ""}
       />
       <ReasoningTunnel.In>
         {messages.flatMap((message) =>

@@ -47,10 +47,12 @@ export const NodeDropzoneProvider = ({
 
         addNode(nodeType, {
           data: {
-            content: {
-              url: data.url,
-              type: data.type,
-              name,
+            config: {
+              source: {
+                name,
+                type: data.type,
+                url: data.url,
+              },
             },
           },
           position: {

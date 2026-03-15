@@ -10,6 +10,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { nodeButtons } from "@/lib/node-buttons";
+import { createNodeData, initializeNodeData } from "@/lib/node-data";
 import { getNodeStyleWithDefaultWidth } from "@/lib/node-style";
 import { NodeLayout } from "./layout";
 
@@ -32,24 +33,16 @@ const buildReplacementNode = ({
 }) => {
   const { data: nodeData, ...rest } = options ?? {};
   const timestamp = new Date().toISOString();
-  const nextData =
-    nodeData && typeof nodeData === "object"
-      ? (nodeData as Record<string, unknown>)
-      : {};
-  const createdAt =
-    typeof nextData.createdAt === "string" ? nextData.createdAt : timestamp;
-  const updatedAt =
-    typeof nextData.updatedAt === "string" ? nextData.updatedAt : createdAt;
+  const nextData = {
+    ...createNodeData({}, timestamp),
+    ...initializeNodeData(nodeData, timestamp),
+  };
 
   return {
     id: nanoid(),
     type,
     position,
-    data: {
-      ...nextData,
-      createdAt,
-      updatedAt,
-    },
+    data: nextData,
     origin: [0, 0.5] as [number, number],
     style: getNodeStyleWithDefaultWidth({
       style:

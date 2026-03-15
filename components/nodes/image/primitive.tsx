@@ -11,6 +11,7 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { handleError } from "@/lib/error/handle";
 import { describeImageRequest } from "@/lib/media/client";
+import { patchNodeConfig, replaceNodeResult } from "@/lib/node-data";
 import { uploadFile } from "@/lib/upload";
 import type { ImageNodeProps } from ".";
 
@@ -42,15 +43,24 @@ export const ImagePrimitive = ({
       setFiles(droppedFiles);
       const [file] = droppedFiles;
       const { url, type: contentType } = await uploadFile(file);
-      const hasExistingContent = Boolean(data.content?.url || data.description);
+      const hasExistingContent = Boolean(
+        data.config.source?.url || data.result?.description
+      );
 
-      updateNodeData(id, {
-        content: {
-          url,
-          type: contentType,
-        },
-        ...(hasExistingContent ? { updatedAt: new Date().toISOString() } : {}),
-      });
+      updateNodeData(
+        id,
+        patchNodeConfig(
+          data,
+          {
+            source: {
+              name: file.name,
+              type: contentType,
+              url,
+            },
+          },
+          hasExistingContent ? new Date().toISOString() : data.meta.updatedAt
+        )
+      );
 
       const description = await describeImageRequest(url);
 
@@ -58,10 +68,15 @@ export const ImagePrimitive = ({
         throw new Error(description.error);
       }
 
-      updateNodeData(id, {
-        description: description.description,
-        ...(hasExistingContent ? { updatedAt: new Date().toISOString() } : {}),
-      });
+      updateNodeData(
+        id,
+        replaceNodeResult(data, {
+          description: description.description,
+          output: {
+            text: description.description,
+          },
+        })
+      );
     } catch (error) {
       handleError("Error uploading image", error);
     } finally {
@@ -86,18 +101,18 @@ export const ImagePrimitive = ({
           />
         </Skeleton>
       ) : null}
-      {!isUploading && data.content && (
+      {!isUploading && data.config.source && (
         <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
           <Image
             alt="Image"
             className="max-h-full min-h-0 w-full object-contain"
-            height={data.height ?? 1000}
-            src={data.content.url}
-            width={data.width ?? 1000}
+            height={data.config.height ?? 1000}
+            src={data.config.source.url}
+            width={data.config.width ?? 1000}
           />
         </div>
       )}
-      {!(isUploading || data.content) && (
+      {!(isUploading || data.config.source) && (
         <Dropzone
           accept={{
             "image/*": [],

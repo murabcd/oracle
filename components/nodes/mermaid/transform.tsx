@@ -28,6 +28,12 @@ import {
 } from "@/lib/mermaid/client";
 import { filterModelsByVideoInput } from "@/lib/model-catalog";
 import {
+  markNodeError,
+  markNodeRunning,
+  patchNodeConfig,
+  replaceNodeResult,
+} from "@/lib/node-data";
+import {
   getDescriptionsFromImageNodes,
   getTextFromTextNodes,
   getVideosFromVideoNodes,
@@ -111,9 +117,9 @@ export const MermaidTransform = ({
   const hasAvailableModels = Object.keys(availableModels).length > 0;
   const modelId = getSelectedModelId({
     availableModels,
-    model: data.model,
+    model: data.config.model,
   });
-  const previewSource = data.generated?.source ?? data.source;
+  const previewSource = data.result?.source ?? data.config.source;
 
   const handleGenerate = useCallback(async () => {
     if (loading) {
@@ -135,7 +141,7 @@ export const MermaidTransform = ({
         textPrompts.length ||
         imageDescriptions.length ||
         videos.length ||
-        data.instructions
+        data.config.instructions
       )
     ) {
       handleError("Error generating diagram", "No prompts found");
@@ -154,32 +160,41 @@ export const MermaidTransform = ({
 
     try {
       setLoading(true);
+      updateNodeData(id, markNodeRunning(data));
 
       const response = await generateMermaidRequest({
         prompt: content.join("\n"),
         modelId,
-        instructions: data.instructions,
-        startingSource: data.generated?.source ?? data.source,
+        instructions: data.config.instructions,
+        startingSource: data.result?.source ?? data.config.source,
         videos,
       });
 
-      updateNodeData(id, {
-        generated: {
+      updateNodeData(
+        id,
+        replaceNodeResult(data, {
+          output: {
+            text: response.source,
+          },
           source: response.source,
-        },
-        updatedAt: new Date().toISOString(),
-      });
+        })
+      );
 
       toast.success("Diagram generated");
     } catch (error) {
+      updateNodeData(
+        id,
+        markNodeError(
+          data,
+          error instanceof Error ? error.message : "Failed to generate diagram"
+        )
+      );
       handleError("Error generating diagram", error);
     } finally {
       setLoading(false);
     }
   }, [
-    data.generated?.source,
-    data.instructions,
-    data.source,
+    data,
     getEdges,
     getNodes,
     hasAvailableModels,
@@ -190,7 +205,7 @@ export const MermaidTransform = ({
   ]);
 
   const handleCopy = useCallback(() => {
-    const value = data.generated?.source ?? data.source;
+    const value = data.result?.source ?? data.config.source;
 
     if (!value) {
       return;
@@ -198,7 +213,7 @@ export const MermaidTransform = ({
 
     navigator.clipboard.writeText(value);
     toast.success("Mermaid copied");
-  }, [data.generated?.source, data.source]);
+  }, [data.config.source, data.result?.source]);
 
   const handleDownload = useCallback(async () => {
     try {
@@ -216,14 +231,20 @@ export const MermaidTransform = ({
     event
   ) => {
     const nextInstructions = event.target.value;
-    const hasExistingInstructions = Boolean(data.instructions?.trim().length);
+    const hasExistingInstructions = Boolean(
+      data.config.instructions?.trim().length
+    );
 
-    updateNodeData(id, {
-      instructions: nextInstructions,
-      ...(hasExistingInstructions
-        ? { updatedAt: new Date().toISOString() }
-        : {}),
-    });
+    updateNodeData(
+      id,
+      patchNodeConfig(
+        data,
+        {
+          instructions: nextInstructions,
+        },
+        hasExistingInstructions ? new Date().toISOString() : data.meta.updatedAt
+      )
+    );
   };
   const textareaHotkeysRef = useNodeGenerateHotkeys({
     disabled: loading || !hasAvailableModels,
@@ -239,7 +260,14 @@ export const MermaidTransform = ({
             className="w-[200px] rounded-full"
             disabled={!hasAvailableModels}
             id={id}
-            onChange={(value) => updateNodeData(id, { model: value })}
+            onChange={(value) =>
+              updateNodeData(
+                id,
+                patchNodeConfig(data, {
+                  model: value,
+                })
+              )
+            }
             options={availableModels}
             value={modelId}
           />
@@ -260,7 +288,7 @@ export const MermaidTransform = ({
           }
         : {
             id: `generate-${id}`,
-            tooltip: data.generated?.source ? "Regenerate" : "Generate",
+            tooltip: data.result?.source ? "Regenerate" : "Generate",
             children: (
               <Button
                 className="rounded-full"
@@ -268,7 +296,7 @@ export const MermaidTransform = ({
                 onClick={handleGenerate}
                 size="icon"
               >
-                {data.generated?.source ? (
+                {data.result?.source ? (
                   <RotateCcwIcon size={12} />
                 ) : (
                   <PlayIcon size={12} />
@@ -278,7 +306,7 @@ export const MermaidTransform = ({
           }
     );
 
-    if (data.generated?.source || data.source) {
+    if (data.result?.source || data.config.source) {
       items.push({
         id: `copy-${id}`,
         tooltip: "Copy Mermaid",
@@ -311,8 +339,7 @@ export const MermaidTransform = ({
 
     return items;
   }, [
-    data.generated?.source,
-    data.source,
+    data,
     handleCopy,
     handleDownload,
     handleGenerate,
@@ -348,7 +375,7 @@ export const MermaidTransform = ({
         onChange={handleInstructionsChange}
         placeholder="Enter instruction..."
         ref={textareaHotkeysRef}
-        value={data.instructions ?? ""}
+        value={data.config.instructions ?? ""}
       />
     </NodeLayout>
   );

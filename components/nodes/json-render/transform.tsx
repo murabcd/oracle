@@ -16,6 +16,12 @@ import { handleError } from "@/lib/error/handle";
 import { generateJsonRenderStreamRequest } from "@/lib/json-render/client";
 import { filterModelsByVideoInput } from "@/lib/model-catalog";
 import {
+  markNodeError,
+  markNodeRunning,
+  patchNodeConfig,
+  replaceNodeResult,
+} from "@/lib/node-data";
+import {
   getDescriptionsFromImageNodes,
   getTextFromTextNodes,
   getVideosFromVideoNodes,
@@ -98,9 +104,9 @@ export const JsonRenderTransform = ({
   const hasAvailableModels = Object.keys(availableModels).length > 0;
   const modelId = getSelectedModelId({
     availableModels,
-    model: data.model,
+    model: data.config.model,
   });
-  const previewSpec = data.previewSpec ?? data.generated?.spec;
+  const previewSpec = data.result?.previewSpec ?? data.result?.spec;
 
   const handleGenerate = useCallback(async () => {
     if (loading) {
@@ -122,7 +128,7 @@ export const JsonRenderTransform = ({
         textPrompts.length ||
         imageDescriptions.length ||
         videos.length ||
-        data.instructions
+        data.config.instructions
       )
     ) {
       handleError("Error generating UI", "No prompts found");
@@ -141,17 +147,21 @@ export const JsonRenderTransform = ({
 
     try {
       setLoading(true);
+      updateNodeData(id, markNodeRunning(data));
 
       updateNodeData(id, {
-        previewSpec: data.generated?.spec,
+        result: {
+          ...data.result,
+          previewSpec: data.result?.spec,
+        },
       });
 
       const response = await generateJsonRenderStreamRequest(
         {
           prompt: content.join("\n"),
           modelId,
-          instructions: data.instructions,
-          startingSpec: data.generated?.spec,
+          instructions: data.config.instructions,
+          startingSpec: data.result?.spec,
           videos,
         },
         {
@@ -166,33 +176,50 @@ export const JsonRenderTransform = ({
             }
 
             updateNodeData(id, {
-              previewSpec: spec,
+              result: {
+                ...data.result,
+                previewSpec: spec,
+              },
             });
           },
         }
       );
 
-      updateNodeData(id, {
-        generated: {
+      updateNodeData(
+        id,
+        replaceNodeResult(data, {
           json: response.json,
+          output: {
+            json: response.spec,
+            text: response.json,
+          },
           spec: response.spec,
-        },
-        previewSpec: undefined,
-        updatedAt: new Date().toISOString(),
-      });
+        })
+      );
 
       toast.success("UI generated");
     } catch (error) {
       updateNodeData(id, {
-        previewSpec: undefined,
+        result: data.result
+          ? {
+              ...data.result,
+              previewSpec: undefined,
+            }
+          : undefined,
       });
+      updateNodeData(
+        id,
+        markNodeError(
+          data,
+          error instanceof Error ? error.message : "Failed to generate UI"
+        )
+      );
       handleError("Error generating UI", error);
     } finally {
       setLoading(false);
     }
   }, [
-    data.generated?.spec,
-    data.instructions,
+    data,
     getEdges,
     getNodes,
     hasAvailableModels,
@@ -203,26 +230,32 @@ export const JsonRenderTransform = ({
   ]);
 
   const handleCopy = useCallback(() => {
-    if (!data.generated?.json) {
+    if (!data.result?.json) {
       return;
     }
 
-    navigator.clipboard.writeText(data.generated.json);
+    navigator.clipboard.writeText(data.result.json);
     toast.success("JSON copied");
-  }, [data.generated?.json]);
+  }, [data.result?.json]);
 
   const handleInstructionsChange: ChangeEventHandler<HTMLTextAreaElement> = (
     event
   ) => {
     const nextInstructions = event.target.value;
-    const hasExistingInstructions = Boolean(data.instructions?.trim().length);
+    const hasExistingInstructions = Boolean(
+      data.config.instructions?.trim().length
+    );
 
-    updateNodeData(id, {
-      instructions: nextInstructions,
-      ...(hasExistingInstructions
-        ? { updatedAt: new Date().toISOString() }
-        : {}),
-    });
+    updateNodeData(
+      id,
+      patchNodeConfig(
+        data,
+        {
+          instructions: nextInstructions,
+        },
+        hasExistingInstructions ? new Date().toISOString() : data.meta.updatedAt
+      )
+    );
   };
   const textareaHotkeysRef = useNodeGenerateHotkeys({
     disabled: loading || !hasAvailableModels,
@@ -238,7 +271,14 @@ export const JsonRenderTransform = ({
             className="w-[200px] rounded-full"
             disabled={!hasAvailableModels}
             id={id}
-            onChange={(value) => updateNodeData(id, { model: value })}
+            onChange={(value) =>
+              updateNodeData(
+                id,
+                patchNodeConfig(data, {
+                  model: value,
+                })
+              )
+            }
             options={availableModels}
             value={modelId}
           />
@@ -259,7 +299,7 @@ export const JsonRenderTransform = ({
           }
         : {
             id: `generate-${id}`,
-            tooltip: data.generated?.spec ? "Regenerate" : "Generate",
+            tooltip: data.result?.spec ? "Regenerate" : "Generate",
             children: (
               <Button
                 className="rounded-full"
@@ -267,7 +307,7 @@ export const JsonRenderTransform = ({
                 onClick={handleGenerate}
                 size="icon"
               >
-                {data.generated?.spec ? (
+                {data.result?.spec ? (
                   <RotateCcwIcon size={12} />
                 ) : (
                   <PlayIcon size={12} />
@@ -277,7 +317,7 @@ export const JsonRenderTransform = ({
           }
     );
 
-    if (data.generated?.json) {
+    if (data.result?.json) {
       items.push({
         id: `copy-${id}`,
         tooltip: "Copy JSON",
@@ -296,8 +336,7 @@ export const JsonRenderTransform = ({
 
     return items;
   }, [
-    data.generated?.json,
-    data.generated?.spec,
+    data,
     handleCopy,
     handleGenerate,
     id,
@@ -333,7 +372,7 @@ export const JsonRenderTransform = ({
         onChange={handleInstructionsChange}
         placeholder="Enter instruction..."
         ref={textareaHotkeysRef}
-        value={data.instructions ?? ""}
+        value={data.config.instructions ?? ""}
       />
     </NodeLayout>
   );

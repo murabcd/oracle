@@ -2,6 +2,7 @@ import type { Editor, EditorEvents } from "@tiptap/core";
 import { useReactFlow } from "@xyflow/react";
 import { useRef } from "react";
 import { EditorProvider } from "@/components/kibo-ui/editor";
+import { patchNodeConfig } from "@/lib/node-data";
 import { cn } from "@/lib/utils";
 import { NodeLayout } from "../layout";
 import type { TextNodeProps } from ".";
@@ -22,13 +23,19 @@ export const TextPrimitive = ({
   const handleUpdate = ({ editor: editorInstance }: { editor: Editor }) => {
     const json = editorInstance.getJSON();
     const text = editorInstance.getText();
-    const hasExistingText = Boolean(data.text?.trim().length);
+    const hasExistingText = Boolean(data.config.text?.trim().length);
 
-    updateNodeData(id, {
-      content: json,
-      text,
-      ...(hasExistingText ? { updatedAt: new Date().toISOString() } : {}),
-    });
+    updateNodeData(
+      id,
+      patchNodeConfig(
+        data,
+        {
+          content: json,
+          text,
+        },
+        hasExistingText ? new Date().toISOString() : data.meta.updatedAt
+      )
+    );
   };
 
   const handleCreate = (props: EditorEvents["create"]) => {
@@ -53,7 +60,7 @@ export const TextPrimitive = ({
             "[&_p:first-child]:mt-0",
             "[&_p:last-child]:mb-0"
           )}
-          content={data.content}
+          content={data.config.content}
           immediatelyRender={false}
           onCreate={handleCreate}
           onUpdate={handleUpdate}

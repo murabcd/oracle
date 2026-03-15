@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { handleError } from "@/lib/error/handle";
 import { downloadMermaidSvg } from "@/lib/mermaid/client";
+import { patchNodeConfig } from "@/lib/node-data";
 import type { MermaidNodeProps } from ".";
 import { MermaidPreview } from "./view";
 
@@ -31,16 +32,22 @@ export const MermaidPrimitive = ({
 }: MermaidPrimitiveProps) => {
   const { updateNodeData } = useReactFlow();
   const { resolvedTheme } = useTheme();
-  const source = data.source ?? "";
-  const hasExistingSource = Boolean(data.source?.trim().length);
+  const source = data.config.source ?? "";
+  const hasExistingSource = Boolean(data.config.source?.trim().length);
 
   const handleChange: ChangeEventHandler<HTMLTextAreaElement> = (event) => {
     const nextSource = event.target.value;
 
-    updateNodeData(id, {
-      source: nextSource,
-      ...(hasExistingSource ? { updatedAt: new Date().toISOString() } : {}),
-    });
+    updateNodeData(
+      id,
+      patchNodeConfig(
+        data,
+        {
+          source: nextSource,
+        },
+        hasExistingSource ? new Date().toISOString() : data.meta.updatedAt
+      )
+    );
   };
 
   const handleDownload = useCallback(async () => {

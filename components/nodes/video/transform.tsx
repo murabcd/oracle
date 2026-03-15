@@ -15,6 +15,12 @@ import { useNodeGenerateHotkeys } from "@/hooks/use-node-generate-hotkeys";
 import { download } from "@/lib/download";
 import { handleError } from "@/lib/error/handle";
 import { generateVideoRequest } from "@/lib/media/client";
+import {
+  markNodeError,
+  markNodeRunning,
+  patchNodeConfig,
+  replaceNodeResult,
+} from "@/lib/node-data";
 import { getImagesFromImageNodes, getTextFromTextNodes } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
@@ -112,7 +118,14 @@ const buildToolbar = ({
         <ModelSelector
           className="w-[200px] rounded-full"
           key={id}
-          onChange={(value) => updateNodeData(id, { model: value })}
+          onChange={(value) =>
+            updateNodeData(
+              id,
+              patchNodeConfig(data, {
+                model: value,
+              })
+            )
+          }
           options={videoModels}
           value={modelId}
         />
@@ -151,8 +164,8 @@ const buildToolbar = ({
     });
   }
 
-  if (data.generated?.url) {
-    const generatedVideo = data.generated;
+  if (data.result?.video?.url) {
+    const generatedVideo = data.result.video;
 
     toolbar.push({
       id: `download-${id}`,
@@ -185,10 +198,10 @@ export const VideoTransform = ({
   const hasVideoGeneration = Object.keys(videoModels).length > 0;
   const modelId = getSelectedModelId({
     hasVideoGeneration,
-    model: data.model,
+    model: data.config.model,
     videoModels,
   });
-  const hasGeneratedVideo = typeof data.generated?.url === "string";
+  const hasGeneratedVideo = typeof data.result?.video?.url === "string";
 
   const handleGenerate = async () => {
     if (loading) {
@@ -203,17 +216,20 @@ export const VideoTransform = ({
       const incomers = getIncomers({ id }, getNodes(), getEdges());
       const textPrompts = getTextFromTextNodes(incomers);
       const images = getImagesFromImageNodes(incomers);
-      const hasInstructions = Boolean(data.instructions?.trim().length);
+      const hasInstructions = Boolean(data.config.instructions?.trim().length);
 
       if (!(textPrompts.length || images.length || hasInstructions)) {
         throw new Error("No prompts found");
       }
 
       setLoading(true);
+      updateNodeData(id, markNodeRunning(data));
 
       const response = await generateVideoRequest({
         modelId,
-        prompt: [data.instructions, ...textPrompts].filter(Boolean).join("\n"),
+        prompt: [data.config.instructions, ...textPrompts]
+          .filter(Boolean)
+          .join("\n"),
         image: images.at(0)?.url,
       });
 
@@ -221,16 +237,33 @@ export const VideoTransform = ({
         throw new Error(response.error);
       }
 
-      updateNodeData(id, {
-        updatedAt: new Date().toISOString(),
-        generated: {
-          url: response.url,
-          type: response.type,
-        },
-      });
+      updateNodeData(
+        id,
+        replaceNodeResult(data, {
+          output: {
+            files: [
+              {
+                type: response.type,
+                url: response.url,
+              },
+            ],
+          },
+          video: {
+            type: response.type,
+            url: response.url,
+          },
+        })
+      );
 
       toast.success("Video generated");
     } catch (error) {
+      updateNodeData(
+        id,
+        markNodeError(
+          data,
+          error instanceof Error ? error.message : "Failed to generate video"
+        )
+      );
       handleError("Error generating video", error);
     } finally {
       setLoading(false);
@@ -253,14 +286,20 @@ export const VideoTransform = ({
     event
   ) => {
     const nextInstructions = event.target.value;
-    const hasExistingInstructions = Boolean(data.instructions?.trim().length);
+    const hasExistingInstructions = Boolean(
+      data.config.instructions?.trim().length
+    );
 
-    updateNodeData(id, {
-      instructions: nextInstructions,
-      ...(hasExistingInstructions
-        ? { updatedAt: new Date().toISOString() }
-        : {}),
-    });
+    updateNodeData(
+      id,
+      patchNodeConfig(
+        data,
+        {
+          instructions: nextInstructions,
+        },
+        hasExistingInstructions ? new Date().toISOString() : data.meta.updatedAt
+      )
+    );
   };
   const textareaHotkeysRef = useNodeGenerateHotkeys({
     disabled: loading || !hasVideoGeneration,
@@ -285,7 +324,7 @@ export const VideoTransform = ({
           />
         </Skeleton>
       ) : null}
-      {!(loading || data.generated?.url || hasVideoGeneration) && (
+      {!(loading || data.result?.video?.url || hasVideoGeneration) && (
         <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 px-4 text-center">
           <p className="text-muted-foreground text-sm">
             Video generation is not configured in this app.
@@ -305,12 +344,12 @@ export const VideoTransform = ({
           <video
             autoPlay
             className="max-h-full min-h-0 w-full object-contain"
-            height={data.height ?? 450}
+            height={data.config.height ?? 450}
             loop
             muted
             playsInline
-            src={data.generated?.url}
-            width={data.width ?? 800}
+            src={data.result?.video?.url}
+            width={data.config.width ?? 800}
           />
         </div>
       ) : null}
@@ -319,7 +358,7 @@ export const VideoTransform = ({
         onChange={handleInstructionsChange}
         placeholder="Enter instruction..."
         ref={textareaHotkeysRef}
-        value={data.instructions ?? ""}
+        value={data.config.instructions ?? ""}
       />
     </NodeLayout>
   );

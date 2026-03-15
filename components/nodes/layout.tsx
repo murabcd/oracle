@@ -21,6 +21,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { initializeNodeData, isNodeData, patchNodeMeta } from "@/lib/node-data";
 import { cn } from "@/lib/utils";
 import { useNodeOperations } from "@/providers/node-operations";
 import { NodeToolbar } from "./toolbar";
@@ -51,13 +52,7 @@ interface NodeDataSheetProps {
 interface NodeLayoutProps {
   children: ReactNode;
   id: string;
-  data?: Record<string, unknown> & {
-    createdAt?: string;
-    model?: string;
-    source?: string;
-    generated?: object;
-    updatedAt?: string;
-  };
+  data?: Record<string, unknown>;
   title: string;
   type: string;
   toolbar?: {
@@ -173,6 +168,24 @@ const getSkippedKeys = (entries: Record<string, unknown>) => {
   return skipKeys;
 };
 
+const normalizeNodeSheetData = (data?: Record<string, unknown>) => {
+  if (!data) {
+    return {};
+  }
+
+  if (!isNodeData(data)) {
+    return data;
+  }
+
+  const nodeData = initializeNodeData(data);
+
+  return {
+    config: nodeData.config,
+    meta: nodeData.meta,
+    result: nodeData.result,
+  };
+};
+
 const pushInlineField = (
   inlineFields: InlineField[],
   label: string,
@@ -260,7 +273,12 @@ const appendDisplayField = (
   }
 
   if (isPlainObject(entryValue)) {
-    if (key === "generated" || key === "content") {
+    if (
+      key === "config" ||
+      key === "content" ||
+      key === "generated" ||
+      key === "result"
+    ) {
       visit(entryValue, "");
       return;
     }
@@ -311,7 +329,7 @@ const NodeDataSheet = ({
   onOpenChange,
   data,
 }: NodeDataSheetProps) => {
-  const displayFields = getDisplayFields(data ?? {});
+  const displayFields = getDisplayFields(normalizeNodeSheetData(data));
 
   return (
     <Sheet onOpenChange={onOpenChange} open={open}>
@@ -383,27 +401,30 @@ export const NodeLayout = ({
     useReactFlow();
   const { duplicateNode } = useNodeOperations();
   const [showData, setShowData] = useState(false);
-  const createdAt = data?.createdAt
-    ? formatHeaderTimestamp(data.createdAt)
+  const nodeData = data ? initializeNodeData(data) : null;
+  const createdAt = nodeData?.meta.createdAt
+    ? formatHeaderTimestamp(nodeData.meta.createdAt)
     : null;
-  const updatedAt = data?.updatedAt ? formatUpdatedAt(data.updatedAt) : null;
+  const updatedAt = nodeData?.meta.updatedAt
+    ? formatUpdatedAt(nodeData.meta.updatedAt)
+    : null;
   const hasBeenUpdated =
-    Boolean(data?.createdAt) &&
-    Boolean(data?.updatedAt) &&
-    data?.createdAt !== data?.updatedAt;
+    Boolean(nodeData?.meta.createdAt) &&
+    Boolean(nodeData?.meta.updatedAt) &&
+    nodeData?.meta.createdAt !== nodeData?.meta.updatedAt;
   const statusLabel = hasBeenUpdated ? "updated" : "created";
   const statusValue = hasBeenUpdated ? updatedAt : createdAt;
-  const createdAtTitle = data?.createdAt
+  const createdAtTitle = nodeData?.meta.createdAt
     ? new Intl.DateTimeFormat("en-US", {
         dateStyle: "medium",
         timeStyle: "short",
-      }).format(new Date(data.createdAt))
+      }).format(new Date(nodeData.meta.createdAt))
     : null;
-  const updatedAtTitle = data?.updatedAt
+  const updatedAtTitle = nodeData?.meta.updatedAt
     ? new Intl.DateTimeFormat("en-US", {
         dateStyle: "medium",
         timeStyle: "short",
-      }).format(new Date(data.updatedAt))
+      }).format(new Date(nodeData.meta.updatedAt))
     : null;
   const handleFocus = () => {
     const node = getNode(id);
@@ -462,9 +483,12 @@ export const NodeLayout = ({
     });
 
     if (type !== "drop") {
-      updateNodeData(id, {
-        updatedAt: new Date().toISOString(),
-      });
+      updateNodeData(
+        id,
+        patchNodeMeta(initializeNodeData(data), {
+          updatedAt: new Date().toISOString(),
+        })
+      );
     }
   };
 

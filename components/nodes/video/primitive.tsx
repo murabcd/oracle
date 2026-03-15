@@ -9,6 +9,7 @@ import {
 import { NodeLayout } from "@/components/nodes/layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { handleError } from "@/lib/error/handle";
+import { patchNodeConfig } from "@/lib/node-data";
 import { uploadFile } from "@/lib/upload";
 import type { VideoNodeProps } from ".";
 
@@ -41,15 +42,22 @@ export const VideoPrimitive = ({
 
       const [file] = droppedFiles;
       const { url, type: contentType } = await uploadFile(file);
-      const hasExistingContent = Boolean(data.content?.url);
+      const hasExistingContent = Boolean(data.config.source?.url);
 
-      updateNodeData(id, {
-        content: {
-          url,
-          type: contentType,
-        },
-        ...(hasExistingContent ? { updatedAt: new Date().toISOString() } : {}),
-      });
+      updateNodeData(
+        id,
+        patchNodeConfig(
+          data,
+          {
+            source: {
+              name: file.name,
+              type: contentType,
+              url,
+            },
+          },
+          hasExistingContent ? new Date().toISOString() : data.meta.updatedAt
+        )
+      );
     } catch (error) {
       handleError("Error uploading video", error);
     } finally {
@@ -74,18 +82,18 @@ export const VideoPrimitive = ({
           />
         </Skeleton>
       ) : null}
-      {!isUploading && data.content && (
+      {!isUploading && data.config.source && (
         <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
           <video
             autoPlay
             className="max-h-full min-h-0 w-full object-contain"
             loop
             muted
-            src={data.content.url}
+            src={data.config.source.url}
           />
         </div>
       )}
-      {!(isUploading || data.content) && (
+      {!(isUploading || data.config.source) && (
         <Dropzone
           accept={{
             "video/*": [],

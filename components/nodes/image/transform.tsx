@@ -22,6 +22,12 @@ import { useNodeGenerateHotkeys } from "@/hooks/use-node-generate-hotkeys";
 import { download } from "@/lib/download";
 import { handleError } from "@/lib/error/handle";
 import { editImageRequest, generateImageRequest } from "@/lib/media/client";
+import {
+  markNodeError,
+  markNodeRunning,
+  patchNodeConfig,
+  replaceNodeResult,
+} from "@/lib/node-data";
 import { getImagesFromImageNodes, getTextFromTextNodes } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
@@ -60,7 +66,7 @@ export const ImageTransform = ({
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
   const [loading, setLoading] = useState(false);
   const { imageModels } = useModels();
-  const modelId = data.model ?? getDefaultModel(imageModels);
+  const modelId = data.config.model ?? getDefaultModel(imageModels);
 
   const handleGenerate = useCallback(async () => {
     if (loading) {
@@ -70,7 +76,7 @@ export const ImageTransform = ({
     const incomers = getIncomers({ id }, getNodes(), getEdges());
     const textNodes = getTextFromTextNodes(incomers);
     const imageNodes = getImagesFromImageNodes(incomers);
-    const hasInstructions = Boolean(data.instructions?.trim().length);
+    const hasInstructions = Boolean(data.config.instructions?.trim().length);
 
     try {
       if (!(textNodes.length || imageNodes.length || hasInstructions)) {
@@ -78,60 +84,77 @@ export const ImageTransform = ({
       }
 
       setLoading(true);
+      updateNodeData(id, markNodeRunning(data));
 
       const response = imageNodes.length
         ? await editImageRequest({
             images: imageNodes,
-            instructions: data.instructions,
+            instructions: data.config.instructions,
             modelId,
           })
         : await generateImageRequest({
             prompt: textNodes.join("\n"),
             modelId,
-            instructions: data.instructions,
+            instructions: data.config.instructions,
           });
 
       if ("error" in response) {
         throw new Error(response.error);
       }
 
-      updateNodeData(id, {
-        updatedAt: new Date().toISOString(),
-        generated: {
-          url: response.url,
-          type: response.type,
-        },
-        description: response.description,
-      });
+      updateNodeData(
+        id,
+        replaceNodeResult(data, {
+          description: response.description,
+          image: {
+            type: response.type,
+            url: response.url,
+          },
+          output: {
+            files: [
+              {
+                type: response.type,
+                url: response.url,
+              },
+            ],
+            text: response.description,
+          },
+        })
+      );
 
       toast.success("Image generated");
     } catch (error) {
+      updateNodeData(
+        id,
+        markNodeError(
+          data,
+          error instanceof Error ? error.message : "Failed to generate image"
+        )
+      );
       handleError("Error generating image", error);
     } finally {
       setLoading(false);
     }
-  }, [
-    loading,
-    id,
-    data.instructions,
-    getEdges,
-    modelId,
-    getNodes,
-    updateNodeData,
-  ]);
+  }, [loading, id, data, getEdges, modelId, getNodes, updateNodeData]);
 
   const handleInstructionsChange: ChangeEventHandler<HTMLTextAreaElement> = (
     event
   ) => {
     const nextInstructions = event.target.value;
-    const hasExistingInstructions = Boolean(data.instructions?.trim().length);
+    const hasExistingInstructions = Boolean(
+      data.config.instructions?.trim().length
+    );
 
-    updateNodeData(id, {
-      instructions: nextInstructions,
-      ...(hasExistingInstructions
-        ? { updatedAt: new Date().toISOString() }
-        : {}),
-    });
+    updateNodeData(
+      id,
+      patchNodeConfig(
+        data,
+        {
+          instructions: nextInstructions,
+        },
+        hasExistingInstructions ? new Date().toISOString() : data.meta.updatedAt
+      )
+    );
   };
   const textareaHotkeysRef = useNodeGenerateHotkeys({
     disabled: loading,
@@ -156,7 +179,14 @@ export const ImageTransform = ({
           <ModelSelector
             className="w-[200px] rounded-full"
             id={id}
-            onChange={(value) => updateNodeData(id, { model: value })}
+            onChange={(value) =>
+              updateNodeData(
+                id,
+                patchNodeConfig(data, {
+                  model: value,
+                })
+              )
+            }
             options={availableModels}
             value={modelId}
           />
@@ -177,7 +207,7 @@ export const ImageTransform = ({
           }
         : {
             id: `generate-${id}`,
-            tooltip: data.generated?.url ? "Regenerate" : "Generate",
+            tooltip: data.result?.image?.url ? "Regenerate" : "Generate",
             children: (
               <Button
                 className="rounded-full"
@@ -185,7 +215,7 @@ export const ImageTransform = ({
                 onClick={handleGenerate}
                 size="icon"
               >
-                {data.generated?.url ? (
+                {data.result?.image?.url ? (
                   <RotateCcwIcon size={12} />
                 ) : (
                   <PlayIcon size={12} />
@@ -195,14 +225,16 @@ export const ImageTransform = ({
           }
     );
 
-    if (data.generated) {
+    if (data.result?.image) {
+      const generatedImage = data.result.image;
+
       items.push({
         id: `download-${id}`,
         tooltip: "Download",
         children: (
           <Button
             className="rounded-full"
-            onClick={() => download(data.generated, id, "png")}
+            onClick={() => download(generatedImage, id, "png")}
             size="icon"
             variant="ghost"
           >
@@ -213,15 +245,7 @@ export const ImageTransform = ({
     }
 
     return items;
-  }, [
-    modelId,
-    imageModels,
-    id,
-    updateNodeData,
-    loading,
-    data.generated,
-    handleGenerate,
-  ]);
+  }, [modelId, imageModels, id, updateNodeData, loading, data, handleGenerate]);
 
   return (
     <NodeLayout
@@ -241,7 +265,7 @@ export const ImageTransform = ({
           />
         </Skeleton>
       ) : null}
-      {!(loading || data.generated?.url) && (
+      {!(loading || data.result?.image?.url) && (
         <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
           <p className="text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
@@ -249,13 +273,13 @@ export const ImageTransform = ({
           </p>
         </div>
       )}
-      {!loading && data.generated?.url && (
+      {!loading && data.result?.image?.url && (
         <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
           <Image
             alt="Generated image"
             className="max-h-full min-h-0 w-full object-contain"
             height={1000}
-            src={data.generated.url}
+            src={data.result.image.url}
             width={1000}
           />
         </div>
@@ -265,7 +289,7 @@ export const ImageTransform = ({
         onChange={handleInstructionsChange}
         placeholder="Enter instruction..."
         ref={textareaHotkeysRef}
-        value={data.instructions ?? ""}
+        value={data.config.instructions ?? ""}
       />
     </NodeLayout>
   );

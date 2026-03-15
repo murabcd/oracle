@@ -22,6 +22,7 @@ import { useCallback, useEffect, useReducer } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useDebouncedCallback } from "use-debounce";
 import { loadCanvas, saveCanvas } from "@/lib/canvas-storage";
+import { createNodeData, initializeNodeData } from "@/lib/node-data";
 import {
   applyDefaultNodeWidth,
   getNodeStyleWithDefaultWidth,
@@ -63,27 +64,24 @@ const resolveStateUpdate = <T,>(updater: SetStateAction<T>, current: T): T =>
     ? (updater as (value: T) => T)(current)
     : updater;
 
-const withNodeTimestamps = (node: Node, fallbackTimestamp: string): Node => {
+const getNodeDataForCreation = (value: unknown, timestamp: string) => {
+  const data = initializeNodeData(value, timestamp);
+
+  return {
+    ...createNodeData({}, timestamp),
+    config: data.config,
+    ...(typeof data.result === "undefined" ? {} : { result: data.result }),
+  };
+};
+
+const withNodeDefaults = (node: Node, fallbackTimestamp: string): Node => {
   if (node.type === "drop") {
     return node;
   }
 
-  const data =
-    node.data && typeof node.data === "object"
-      ? (node.data as Record<string, unknown>)
-      : {};
-  const createdAt =
-    typeof data.createdAt === "string" ? data.createdAt : fallbackTimestamp;
-  const updatedAt =
-    typeof data.updatedAt === "string" ? data.updatedAt : createdAt;
-
   return applyDefaultNodeWidth({
     ...node,
-    data: {
-      ...data,
-      createdAt,
-      updatedAt,
-    },
+    data: initializeNodeData(node.data, fallbackTimestamp),
   });
 };
 
@@ -137,7 +135,7 @@ const useCanvasState = ({
     const stored = loadCanvas();
     const fallbackTimestamp = new Date().toISOString();
     const nodes = (stored?.nodes ?? initialNodes ?? []).map((node) =>
-      withNodeTimestamps(node, fallbackTimestamp)
+      withNodeDefaults(node, fallbackTimestamp)
     );
 
     dispatch({
@@ -244,26 +242,21 @@ const useCanvasController = (props: ReactFlowProps) => {
     (type: string, options?: Record<string, unknown>) => {
       const { data: nodeData, ...nodeOptions } = options ?? {};
       const timestamp = new Date().toISOString();
-      const data =
-        nodeData && typeof nodeData === "object"
-          ? (nodeData as Record<string, unknown>)
-          : {};
-      const createdAt =
-        typeof data.createdAt === "string" ? data.createdAt : timestamp;
-      const updatedAt =
-        typeof data.updatedAt === "string" ? data.updatedAt : createdAt;
+      let data: Record<string, unknown>;
+
+      if (type === "drop") {
+        data =
+          nodeData && typeof nodeData === "object" && !Array.isArray(nodeData)
+            ? (nodeData as Record<string, unknown>)
+            : {};
+      } else {
+        data = getNodeDataForCreation(nodeData, timestamp);
+      }
+
       const newNode: Node = {
         id: nanoid(),
         type,
-        data: {
-          ...data,
-          ...(type === "drop"
-            ? {}
-            : {
-                createdAt,
-                updatedAt,
-              }),
-        },
+        data,
         position: { x: 0, y: 0 },
         origin: [0, 0.5],
         style: getNodeStyleWithDefaultWidth({
@@ -296,15 +289,20 @@ const useCanvasController = (props: ReactFlowProps) => {
         return;
       }
 
-      const {
-        id: _oldId,
-        data: {
-          createdAt: _createdAt,
-          updatedAt: _updatedAt,
-          ...nodeData
-        } = {},
-        ...nodeProps
-      } = node;
+      const { id: _oldId, data: rawNodeData = {}, ...nodeProps } = node;
+      const nodeData =
+        node.type === "drop"
+          ? rawNodeData
+          : (() => {
+              const data = initializeNodeData(rawNodeData);
+
+              return {
+                config: data.config,
+                ...(typeof data.result === "undefined"
+                  ? {}
+                  : { result: data.result }),
+              };
+            })();
 
       const newId = addNode(node.type, {
         ...nodeProps,

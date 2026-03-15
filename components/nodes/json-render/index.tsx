@@ -1,24 +1,29 @@
 import type { Spec } from "@json-render/core";
 import { useNodeConnections } from "@xyflow/react";
 import type { JsonRenderSpec } from "@/lib/json-render/catalog";
+import type { BaseNodeData, NodeResultBase } from "@/lib/node-data";
+import { initializeNodeData } from "@/lib/node-data";
 import { JsonRenderPrimitive } from "./primitive";
 import { JsonRenderTransform } from "./transform";
 
+export interface JsonRenderNodeConfig {
+  [key: string]: unknown;
+  instructions?: string;
+  json?: string;
+  model?: string;
+  spec?: JsonRenderSpec;
+}
+
+export interface JsonRenderNodeResult extends NodeResultBase {
+  [key: string]: unknown;
+  json: string;
+  previewSpec?: Spec;
+  spec: JsonRenderSpec;
+}
+
 export interface JsonRenderNodeProps {
   type: string;
-  data: {
-    createdAt?: string;
-    updatedAt?: string;
-    model?: string;
-    instructions?: string;
-    json?: string;
-    spec?: JsonRenderSpec;
-    previewSpec?: Spec;
-    generated?: {
-      json: string;
-      spec: JsonRenderSpec;
-    };
-  };
+  data: BaseNodeData<JsonRenderNodeConfig, JsonRenderNodeResult>;
   id: string;
 }
 
@@ -31,5 +36,11 @@ export const JsonRenderNode = (props: JsonRenderNodeProps) => {
     ? JsonRenderTransform
     : JsonRenderPrimitive;
 
-  return <Component {...props} title="Interface" />;
+  return (
+    <Component
+      {...props}
+      data={initializeNodeData(props.data)}
+      title="Interface"
+    />
+  );
 };
