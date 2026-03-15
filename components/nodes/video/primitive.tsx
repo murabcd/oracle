@@ -67,7 +67,7 @@ export const VideoPrimitive = ({
       type={type}
     >
       {isUploading ? (
-        <Skeleton className="flex min-h-72 flex-1 animate-pulse items-center justify-center">
+        <Skeleton className="flex min-h-72 flex-1 animate-pulse items-center justify-center rounded-b-xl bg-secondary/60">
           <Loader2Icon
             className="size-4 animate-spin text-muted-foreground"
             size={16}
@@ -75,20 +75,22 @@ export const VideoPrimitive = ({
         </Skeleton>
       ) : null}
       {!isUploading && data.content && (
-        <video
-          autoPlay
-          className="min-h-72 flex-1 object-contain"
-          loop
-          muted
-          src={data.content.url}
-        />
+        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
+          <video
+            autoPlay
+            className="max-h-full min-h-0 w-full object-contain"
+            loop
+            muted
+            src={data.content.url}
+          />
+        </div>
       )}
       {!(isUploading || data.content) && (
         <Dropzone
           accept={{
             "video/*": [],
           }}
-          className="min-h-72 flex-1 rounded-none border-none bg-transparent shadow-none hover:bg-transparent dark:bg-transparent dark:hover:bg-transparent"
+          className="min-h-72 flex-1 rounded-b-xl border-none bg-secondary/60 shadow-none hover:bg-secondary/60 dark:bg-secondary/60 dark:hover:bg-secondary/60"
           maxFiles={1}
           maxSize={1024 * 1024 * 10}
           minSize={1024}

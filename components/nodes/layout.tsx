@@ -15,15 +15,38 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useNodeOperations } from "@/providers/node-operations";
 import { NodeToolbar } from "./toolbar";
+
+interface InlineField {
+  label: string;
+  value: string;
+}
+
+interface BlockField {
+  label: string;
+  value: string;
+  variant: "code" | "json" | "text";
+}
+
+interface DisplayFields {
+  inlineFields: InlineField[];
+  blockFields: BlockField[];
+}
+
+interface NodeDataSheetProps {
+  id: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  data?: Record<string, unknown>;
+}
 
 interface NodeLayoutProps {
   children: ReactNode;
@@ -75,6 +98,268 @@ const formatHeaderTimestamp = (value: string) =>
     timeStyle: "short",
   }).format(new Date(value));
 
+const CAMEL_CASE_BOUNDARY_RE = /([a-z0-9])([A-Z])/g;
+const WORD_SEPARATOR_RE = /[-_]/g;
+const FIRST_CHARACTER_RE = /^./;
+const HIDDEN_METADATA_KEYS = new Set([
+  "createdAt",
+  "updatedAt",
+  "model",
+  "width",
+  "height",
+  "type",
+  "url",
+]);
+
+const toLabel = (value: string) =>
+  value
+    .split(".")
+    .map((segment) =>
+      segment
+        .replace(CAMEL_CASE_BOUNDARY_RE, "$1 $2")
+        .replace(WORD_SEPARATOR_RE, " ")
+        .replace(FIRST_CHARACTER_RE, (character) => character.toUpperCase())
+    )
+    .join(" / ");
+
+const tryParseJsonString = (value: string) => {
+  const trimmed = value.trim();
+
+  if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return null;
+  }
+};
+
+const toPrettyJson = (value: unknown) => JSON.stringify(value, null, 2);
+
+const areEquivalentJsonValues = (left: unknown, right: unknown) =>
+  toPrettyJson(left) === toPrettyJson(right);
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const getSkippedKeys = (entries: Record<string, unknown>) => {
+  const skipKeys = new Set<string>();
+  const parsedJson =
+    typeof entries.json === "string" ? tryParseJsonString(entries.json) : null;
+
+  if (
+    parsedJson &&
+    typeof entries.spec !== "undefined" &&
+    areEquivalentJsonValues(parsedJson, entries.spec)
+  ) {
+    skipKeys.add("spec");
+  }
+
+  if (
+    typeof entries.text === "string" &&
+    typeof entries.content !== "undefined" &&
+    entries.text.trim().length > 0
+  ) {
+    skipKeys.add("content");
+  }
+
+  if ("previewSpec" in entries) {
+    skipKeys.add("previewSpec");
+  }
+
+  return skipKeys;
+};
+
+const pushInlineField = (
+  inlineFields: InlineField[],
+  label: string,
+  value: string
+) => {
+  inlineFields.push({ label, value });
+};
+
+const pushBlockField = (
+  blockFields: BlockField[],
+  label: string,
+  value: string,
+  variant: BlockField["variant"]
+) => {
+  blockFields.push({ label, value, variant });
+};
+
+const appendDisplayField = (
+  key: string,
+  entryValue: unknown,
+  fieldPath: string,
+  displayFields: DisplayFields,
+  visit: (entries: Record<string, unknown>, path?: string) => void
+) => {
+  const label = toLabel(fieldPath);
+
+  if (entryValue === null) {
+    pushInlineField(displayFields.inlineFields, label, "null");
+    return;
+  }
+
+  if (
+    typeof entryValue === "boolean" ||
+    typeof entryValue === "number" ||
+    typeof entryValue === "bigint"
+  ) {
+    pushInlineField(displayFields.inlineFields, label, String(entryValue));
+    return;
+  }
+
+  if (typeof entryValue === "string") {
+    const parsedJson = tryParseJsonString(entryValue);
+
+    if (parsedJson) {
+      pushBlockField(
+        displayFields.blockFields,
+        label,
+        toPrettyJson(parsedJson),
+        "json"
+      );
+      return;
+    }
+
+    if (key === "text") {
+      pushBlockField(displayFields.blockFields, label, entryValue, "text");
+      return;
+    }
+
+    if (entryValue.includes("\n")) {
+      pushBlockField(displayFields.blockFields, label, entryValue, "code");
+      return;
+    }
+
+    if (entryValue.length > 120) {
+      pushBlockField(displayFields.blockFields, label, entryValue, "text");
+      return;
+    }
+
+    pushInlineField(displayFields.inlineFields, label, entryValue);
+    return;
+  }
+
+  if (Array.isArray(entryValue)) {
+    pushBlockField(
+      displayFields.blockFields,
+      label,
+      toPrettyJson(entryValue),
+      "json"
+    );
+    return;
+  }
+
+  if (isPlainObject(entryValue)) {
+    if (key === "generated" || key === "content") {
+      visit(entryValue, "");
+      return;
+    }
+
+    pushBlockField(
+      displayFields.blockFields,
+      label,
+      toPrettyJson(entryValue),
+      "json"
+    );
+    return;
+  }
+
+  pushInlineField(displayFields.inlineFields, label, String(entryValue));
+};
+
+const getDisplayFields = (value: Record<string, unknown>): DisplayFields => {
+  const displayFields: DisplayFields = {
+    inlineFields: [],
+    blockFields: [],
+  };
+
+  const visit = (entries: Record<string, unknown>, path = "") => {
+    const skipKeys = getSkippedKeys(entries);
+
+    for (const [key, entryValue] of Object.entries(entries)) {
+      if (typeof entryValue === "undefined" || skipKeys.has(key)) {
+        continue;
+      }
+
+      if (HIDDEN_METADATA_KEYS.has(key)) {
+        continue;
+      }
+
+      const fieldPath = path ? `${path}.${key}` : key;
+      appendDisplayField(key, entryValue, fieldPath, displayFields, visit);
+    }
+  };
+
+  visit(value);
+
+  return displayFields;
+};
+
+const NodeDataSheet = ({
+  id,
+  open,
+  onOpenChange,
+  data,
+}: NodeDataSheetProps) => {
+  const displayFields = getDisplayFields(data ?? {});
+
+  return (
+    <Sheet onOpenChange={onOpenChange} open={open}>
+      <SheetContent className="gap-0">
+        <SheetHeader>
+          <SheetTitle>Node data</SheetTitle>
+          <SheetDescription>
+            Data for node{" "}
+            <code className="rounded-sm bg-secondary px-2 py-1 font-mono">
+              {id}
+            </code>
+          </SheetDescription>
+        </SheetHeader>
+        <div className="min-h-0 flex-1 overflow-auto px-4 pb-4">
+          <div className="space-y-4">
+            {displayFields.inlineFields.length > 0 ? (
+              <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+                {displayFields.inlineFields.map((field) => (
+                  <div
+                    className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+                    key={field.label}
+                  >
+                    <span className="font-medium text-[11px] text-muted-foreground uppercase tracking-[0.12em]">
+                      {field.label}
+                    </span>
+                    <code className="break-all rounded-sm bg-secondary px-2 py-1 font-mono text-[11px] text-foreground">
+                      {field.value}
+                    </code>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {displayFields.blockFields.map((field) => (
+              <section key={field.label}>
+                <pre
+                  className={cn(
+                    "overflow-auto rounded-lg p-4 font-mono text-[11px] text-white",
+                    field.variant === "text"
+                      ? "whitespace-pre-wrap break-words bg-zinc-950"
+                      : "whitespace-pre bg-black"
+                  )}
+                >
+                  {field.value}
+                </pre>
+              </section>
+            ))}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
 export const NodeLayout = ({
   children,
   type,
@@ -114,7 +399,6 @@ export const NodeLayout = ({
         timeStyle: "short",
       }).format(new Date(data.updatedAt))
     : null;
-
   const handleFocus = () => {
     const node = getNode(id);
 
@@ -265,38 +549,27 @@ export const NodeLayout = ({
             <EyeIcon size={12} />
             <span>Focus</span>
           </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={handleDelete} variant="destructive">
-            <TrashIcon size={12} />
-            <span>Delete</span>
-          </ContextMenuItem>
           {process.env.NODE_ENV === "development" && (
             <>
-              <ContextMenuSeparator />
               <ContextMenuItem onClick={handleShowData}>
                 <CodeIcon size={12} />
                 <span>Show data</span>
               </ContextMenuItem>
+              <ContextMenuSeparator />
             </>
           )}
+          <ContextMenuItem onClick={handleDelete} variant="destructive">
+            <TrashIcon size={12} />
+            <span>Delete</span>
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
-      <Dialog onOpenChange={setShowData} open={showData}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Node data</DialogTitle>
-            <DialogDescription>
-              Data for node{" "}
-              <code className="rounded-sm bg-secondary px-2 py-1 font-mono">
-                {id}
-              </code>
-            </DialogDescription>
-          </DialogHeader>
-          <pre className="overflow-x-auto rounded-lg bg-black p-4 text-sm text-white">
-            {JSON.stringify(data, null, 2)}
-          </pre>
-        </DialogContent>
-      </Dialog>
+      <NodeDataSheet
+        data={data}
+        id={id}
+        onOpenChange={setShowData}
+        open={showData}
+      />
     </>
   );
 };

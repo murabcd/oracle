@@ -228,7 +228,7 @@ export const ImageTransform = ({
       type={type}
     >
       {loading ? (
-        <Skeleton className="flex min-h-72 flex-1 animate-pulse items-center justify-center rounded-b-xl">
+        <Skeleton className="flex min-h-72 flex-1 animate-pulse items-center justify-center rounded-b-xl bg-secondary/60">
           <Loader2Icon
             className="size-4 animate-spin text-muted-foreground"
             size={16}
@@ -244,13 +244,15 @@ export const ImageTransform = ({
         </div>
       )}
       {!loading && data.generated?.url && (
-        <Image
-          alt="Generated image"
-          className="min-h-72 flex-1 rounded-b-xl object-contain"
-          height={1000}
-          src={data.generated.url}
-          width={1000}
-        />
+        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
+          <Image
+            alt="Generated image"
+            className="max-h-full min-h-0 w-full object-contain"
+            height={1000}
+            src={data.generated.url}
+            width={1000}
+          />
+        </div>
       )}
       <Textarea
         className="shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"

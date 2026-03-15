@@ -13,7 +13,12 @@ export const JsonRenderPreview = ({
   className?: string;
   spec: JsonRenderSpec | Spec;
 }) => (
-  <div className={cn("nowheel overflow-auto p-3", className)}>
+  <div
+    className={cn(
+      "nowheel overflow-auto rounded-t-3xl rounded-b-xl bg-secondary/60 p-3",
+      className
+    )}
+  >
     <div className="min-h-full p-1 text-white">
       <JSONUIProvider initialState={{}} registry={jsonRenderRegistry}>
         <Renderer registry={jsonRenderRegistry} spec={spec as Spec} />

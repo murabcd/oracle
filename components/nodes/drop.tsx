@@ -135,7 +135,7 @@ export const DropNode = ({ data, id }: DropNodeProps) => {
   return (
     <div ref={ref}>
       <NodeLayout data={data} id={id} title="Add a new node" type="drop">
-        <Command className="rounded-lg">
+        <Command className="rounded-3xl bg-secondary/60">
           <CommandInput placeholder="Type a command or search..." />
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
