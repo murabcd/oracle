@@ -11,6 +11,7 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useNodeGenerateHotkeys } from "@/hooks/use-node-generate-hotkeys";
 import { download } from "@/lib/download";
 import { handleError } from "@/lib/error/handle";
 import { generateVideoRequest } from "@/lib/media/client";
@@ -261,6 +262,10 @@ export const VideoTransform = ({
         : {}),
     });
   };
+  const textareaHotkeysRef = useNodeGenerateHotkeys({
+    disabled: loading || !hasVideoGeneration,
+    onGenerate: handleGenerate,
+  });
 
   return (
     <NodeLayout
@@ -313,6 +318,7 @@ export const VideoTransform = ({
         className="shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
         onChange={handleInstructionsChange}
         placeholder="Enter instruction..."
+        ref={textareaHotkeysRef}
         value={data.instructions ?? ""}
       />
     </NodeLayout>

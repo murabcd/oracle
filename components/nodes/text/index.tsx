@@ -13,6 +13,7 @@ export interface TextNodeProps {
     model?: string;
     updatedAt?: string;
     instructions?: string;
+    webSearchEnabled?: boolean;
 
     // Tiptap generated JSON content
     content?: JSONContent;

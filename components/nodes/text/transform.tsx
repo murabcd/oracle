@@ -1,7 +1,13 @@
 import { useChat } from "@ai-sdk/react";
 import { getIncomers, useNodeConnections, useReactFlow } from "@xyflow/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
-import { CopyIcon, PlayIcon, RotateCcwIcon, SquareIcon } from "lucide-react";
+import {
+  CopyIcon,
+  GlobeIcon,
+  PlayIcon,
+  RotateCcwIcon,
+  SquareIcon,
+} from "lucide-react";
 import {
   type ChangeEventHandler,
   type ComponentProps,
@@ -26,9 +32,13 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useNodeGenerateHotkeys } from "@/hooks/use-node-generate-hotkeys";
 import { useReasoning } from "@/hooks/use-reasoning";
 import { handleError } from "@/lib/error/handle";
-import { filterModelsByVideoInput } from "@/lib/model-catalog";
+import {
+  filterModelsByVideoInput,
+  filterModelsByWebSearch,
+} from "@/lib/model-catalog";
 import {
   getDescriptionsFromImageNodes,
   getImagesFromImageNodes,
@@ -89,11 +99,13 @@ const buildTextToolbar = ({
   data,
   handleCopy,
   handleGenerate,
+  handleToggleWebSearch,
   id,
   messages,
   modelId,
   models,
   hasAvailableModels,
+  webSearchEnabled,
   status,
   stop,
   updateNodeData,
@@ -101,11 +113,13 @@ const buildTextToolbar = ({
   data: TextNodeProps["data"];
   handleCopy: (text: string) => void;
   handleGenerate: () => Promise<void>;
+  handleToggleWebSearch: () => void;
   id: string;
   messages: UIMessage[];
   modelId: string;
   models: ReturnType<typeof useModels>["models"];
   hasAvailableModels: boolean;
+  webSearchEnabled: boolean;
   status: ReturnType<typeof useChat>["status"];
   stop: ReturnType<typeof useChat>["stop"];
   updateNodeData: ReturnType<typeof useReactFlow>["updateNodeData"];
@@ -195,6 +209,24 @@ const buildTextToolbar = ({
       ),
     });
   }
+
+  items.push({
+    id: `web-search-${id}`,
+    tooltip: webSearchEnabled ? "Disable web" : "Enable web",
+    children: (
+      <Button
+        className="relative rounded-full"
+        onClick={handleToggleWebSearch}
+        size="icon"
+        variant="ghost"
+      >
+        {webSearchEnabled ? (
+          <span className="absolute top-2 right-2 size-1.5 rounded-full bg-emerald-500" />
+        ) : null}
+        <GlobeIcon size={12} />
+      </Button>
+    ),
+  });
 
   return items;
 };
@@ -292,14 +324,19 @@ export const TextTransform = ({
     [getNodes, incomingConnections]
   );
   const availableModels = useMemo(
-    () => filterModelsByVideoInput(models, hasVideoInput),
-    [hasVideoInput, models]
+    () =>
+      filterModelsByWebSearch(
+        filterModelsByVideoInput(models, hasVideoInput),
+        data.webSearchEnabled === true
+      ),
+    [data.webSearchEnabled, hasVideoInput, models]
   );
   const hasAvailableModels = Object.keys(availableModels).length > 0;
   const modelId = getSelectedModelId({
     availableModels,
     model: data.model,
   });
+  const webSearchEnabled = data.webSearchEnabled === true;
   const [reasoning, setReasoning] = useReasoning();
   const { sendMessage, messages, setMessages, status, stop } = useChat({
     transport: new DefaultChatTransport({
@@ -396,6 +433,7 @@ export const TextTransform = ({
       {
         body: {
           modelId,
+          webSearchEnabled,
         },
       }
     );
@@ -408,6 +446,7 @@ export const TextTransform = ({
     id,
     modelId,
     setMessages,
+    webSearchEnabled,
   ]);
 
   const handleInstructionsChange: ChangeEventHandler<HTMLTextAreaElement> = (
@@ -428,6 +467,18 @@ export const TextTransform = ({
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard");
   }, []);
+  const textareaHotkeysRef = useNodeGenerateHotkeys({
+    disabled:
+      status === "submitted" || status === "streaming" || !hasAvailableModels,
+    onGenerate: handleGenerate,
+  });
+
+  const handleToggleWebSearch = useCallback(() => {
+    updateNodeData(id, {
+      updatedAt: new Date().toISOString(),
+      webSearchEnabled: !webSearchEnabled,
+    });
+  }, [id, updateNodeData, webSearchEnabled]);
 
   const toolbar = useMemo(
     () =>
@@ -435,11 +486,13 @@ export const TextTransform = ({
         data,
         handleCopy,
         handleGenerate,
+        handleToggleWebSearch,
         id,
         messages,
         modelId,
         models: availableModels,
         hasAvailableModels,
+        webSearchEnabled,
         status,
         stop,
         updateNodeData,
@@ -447,6 +500,7 @@ export const TextTransform = ({
     [
       data,
       handleGenerate,
+      handleToggleWebSearch,
       updateNodeData,
       modelId,
       id,
@@ -456,6 +510,7 @@ export const TextTransform = ({
       handleCopy,
       availableModels,
       hasAvailableModels,
+      webSearchEnabled,
     ]
   );
 
@@ -490,6 +545,7 @@ export const TextTransform = ({
         className="shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
         onChange={handleInstructionsChange}
         placeholder="Enter instruction..."
+        ref={textareaHotkeysRef}
         value={data.instructions ?? ""}
       />
       <ReasoningTunnel.In>

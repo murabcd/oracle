@@ -2,8 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const convertToModelMessages = vi.fn();
 const streamText = vi.fn();
-const google = vi.fn();
-const openai = vi.fn();
+const googleSearchTool = vi.fn();
+const webSearchTool = vi.fn();
+const google = Object.assign(vi.fn(), {
+  tools: {
+    googleSearch: googleSearchTool,
+  },
+});
+const openai = Object.assign(vi.fn(), {
+  tools: {
+    webSearch: webSearchTool,
+  },
+});
 
 vi.mock("ai", () => ({
   convertToModelMessages,
@@ -97,6 +107,39 @@ describe("POST /api/chat", () => {
     expect(response).toBe(streamResponse);
   });
 
+  it("enables the OpenAI web search tool when requested", async () => {
+    const convertResult = [{ role: "user", content: "Hello" }];
+    const streamResponse = new Response("stream");
+    const toUIMessageStreamResponse = vi.fn(() => streamResponse);
+
+    convertToModelMessages.mockResolvedValue(convertResult);
+    openai.mockReturnValue("openai-model");
+    webSearchTool.mockReturnValue("openai-web-search-tool");
+    streamText.mockReturnValue({ toUIMessageStreamResponse });
+
+    const { POST } = await import("@/app/api/chat/route");
+    await POST(
+      new Request("http://localhost/api/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "Hello" }],
+          modelId: "gpt-5.4",
+          webSearchEnabled: true,
+        }),
+        headers: { "content-type": "application/json" },
+      })
+    );
+
+    expect(webSearchTool).toHaveBeenCalledWith({});
+    expect(streamText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tools: {
+          web_search: "openai-web-search-tool",
+        },
+      })
+    );
+  });
+
   it("uses the Google provider without OpenAI-specific options for Google models", async () => {
     const convertResult = [{ role: "user", content: "Hello" }];
     const streamResponse = new Response("stream");
@@ -126,5 +169,38 @@ describe("POST /api/chat", () => {
       })
     );
     expect(response).toBe(streamResponse);
+  });
+
+  it("enables the Google search tool when requested", async () => {
+    const convertResult = [{ role: "user", content: "Hello" }];
+    const streamResponse = new Response("stream");
+    const toUIMessageStreamResponse = vi.fn(() => streamResponse);
+
+    convertToModelMessages.mockResolvedValue(convertResult);
+    google.mockReturnValue("google-model");
+    googleSearchTool.mockReturnValue("google-search-tool");
+    streamText.mockReturnValue({ toUIMessageStreamResponse });
+
+    const { POST } = await import("@/app/api/chat/route");
+    await POST(
+      new Request("http://localhost/api/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "Hello" }],
+          modelId: "gemini-2.5-pro",
+          webSearchEnabled: true,
+        }),
+        headers: { "content-type": "application/json" },
+      })
+    );
+
+    expect(googleSearchTool).toHaveBeenCalledWith({});
+    expect(streamText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tools: {
+          google_search: "google-search-tool",
+        },
+      })
+    );
   });
 });

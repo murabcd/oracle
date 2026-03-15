@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useNodeGenerateHotkeys } from "@/hooks/use-node-generate-hotkeys";
 import { handleError } from "@/lib/error/handle";
 import {
   downloadMermaidSvg,
@@ -224,6 +225,10 @@ export const MermaidTransform = ({
         : {}),
     });
   };
+  const textareaHotkeysRef = useNodeGenerateHotkeys({
+    disabled: loading || !hasAvailableModels,
+    onGenerate: handleGenerate,
+  });
 
   const toolbar = useMemo<ComponentProps<typeof NodeLayout>["toolbar"]>(() => {
     const items: ComponentProps<typeof NodeLayout>["toolbar"] = [
@@ -342,6 +347,7 @@ export const MermaidTransform = ({
         className="shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
         onChange={handleInstructionsChange}
         placeholder="Enter instruction..."
+        ref={textareaHotkeysRef}
         value={data.instructions ?? ""}
       />
     </NodeLayout>

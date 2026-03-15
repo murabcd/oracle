@@ -24,26 +24,32 @@ export const textModels = {
     default: true,
     label: "GPT-5.4",
     priceIndicator: "highest",
+    supportsWebSearch: true,
   }),
   "gpt-5.2": withOpenAIProvider({
     label: "GPT-5.2",
     priceIndicator: "highest",
+    supportsWebSearch: true,
   }),
   "gpt-5": withOpenAIProvider({
     label: "GPT-5",
     priceIndicator: "high",
+    supportsWebSearch: true,
   }),
   "gpt-5-mini": withOpenAIProvider({
     label: "GPT-5 Mini",
     priceIndicator: "low",
+    supportsWebSearch: true,
   }),
   "gpt-5-nano": withOpenAIProvider({
     label: "GPT-5 Nano",
     priceIndicator: "low",
+    supportsWebSearch: true,
   }),
   "gpt-4.1": withOpenAIProvider({
     label: "GPT-4.1",
     priceIndicator: "lowest",
+    supportsWebSearch: true,
   }),
   "gemini-3.1-pro-preview": withGoogleProvider({
     label: "Gemini 3.1 Pro Preview",
@@ -59,16 +65,19 @@ export const textModels = {
     label: "Gemini 2.5 Pro",
     priceIndicator: "high",
     supportsVideoInput: true,
+    supportsWebSearch: true,
   }),
   "gemini-2.5-flash": withGoogleProvider({
     label: "Gemini 2.5 Flash",
     priceIndicator: "low",
     supportsVideoInput: true,
+    supportsWebSearch: true,
   }),
   "gemini-2.5-flash-lite": withGoogleProvider({
     label: "Gemini 2.5 Flash Lite",
     priceIndicator: "lowest",
     supportsVideoInput: true,
+    supportsWebSearch: true,
   }),
 } satisfies Record<string, OracleModel>;
 
@@ -129,5 +138,15 @@ export const filterModelsByVideoInput = (
   requiresVideoInput
     ? Object.fromEntries(
         Object.entries(models).filter(([, model]) => model.supportsVideoInput)
+      )
+    : models;
+
+export const filterModelsByWebSearch = (
+  models: Record<string, OracleModel>,
+  requiresWebSearch: boolean
+) =>
+  requiresWebSearch
+    ? Object.fromEntries(
+        Object.entries(models).filter(([, model]) => model.supportsWebSearch)
       )
     : models;

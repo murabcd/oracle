@@ -231,4 +231,5 @@ export interface OracleModel {
   disabled?: boolean;
   default?: boolean;
   supportsVideoInput?: boolean;
+  supportsWebSearch?: boolean;
 }

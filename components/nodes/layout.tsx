@@ -72,6 +72,7 @@ interface NodeLayoutProps {
   className?: string;
   contentClassName?: string;
   bodyClassName?: string;
+  indicator?: ReactNode;
 }
 
 const formatUpdatedAt = (value: string) => {
@@ -375,6 +376,7 @@ export const NodeLayout = ({
   className,
   contentClassName,
   bodyClassName,
+  indicator,
 }: NodeLayoutProps) => {
   const internalNode = useInternalNode(id);
   const { deleteElements, setCenter, getNode, updateNode, updateNodeData } =
@@ -528,10 +530,11 @@ export const NodeLayout = ({
             )}
             <NodeContent
               className={cn(
-                "rounded-[28px] bg-card p-2 ring-1 ring-border",
+                "relative rounded-[28px] bg-card p-2 ring-1 ring-border",
                 contentClassName
               )}
             >
+              {indicator}
               <div
                 className={cn(
                   "overflow-hidden rounded-3xl bg-card",
