@@ -1,9 +1,19 @@
 "use client";
 
 import { useReactFlow } from "@xyflow/react";
-import type { ChangeEventHandler } from "react";
+import { DownloadIcon } from "lucide-react";
+import { useTheme } from "next-themes";
+import {
+  type ChangeEventHandler,
+  type ComponentProps,
+  useCallback,
+  useMemo,
+} from "react";
 import { NodeLayout } from "@/components/nodes/layout";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { handleError } from "@/lib/error/handle";
+import { downloadMermaidSvg } from "@/lib/mermaid/client";
 import type { MermaidNodeProps } from ".";
 import { MermaidPreview } from "./view";
 
@@ -20,6 +30,7 @@ export const MermaidPrimitive = ({
   title,
 }: MermaidPrimitiveProps) => {
   const { updateNodeData } = useReactFlow();
+  const { resolvedTheme } = useTheme();
   const source = data.source ?? "";
   const hasExistingSource = Boolean(data.source?.trim().length);
 
@@ -32,6 +43,41 @@ export const MermaidPrimitive = ({
     });
   };
 
+  const handleDownload = useCallback(async () => {
+    try {
+      await downloadMermaidSvg({
+        id,
+        resolvedTheme,
+        source,
+      });
+    } catch (error) {
+      handleError("Error downloading Mermaid", error);
+    }
+  }, [id, resolvedTheme, source]);
+
+  const toolbar = useMemo<ComponentProps<typeof NodeLayout>["toolbar"]>(() => {
+    if (!source.trim()) {
+      return undefined;
+    }
+
+    return [
+      {
+        id: `download-${id}`,
+        tooltip: "Download SVG",
+        children: (
+          <Button
+            className="rounded-full"
+            onClick={handleDownload}
+            size="icon"
+            variant="ghost"
+          >
+            <DownloadIcon size={12} />
+          </Button>
+        ),
+      },
+    ];
+  }, [handleDownload, id, source]);
+
   return (
     <NodeLayout
       bodyClassName="flex h-full flex-col"
@@ -42,6 +88,7 @@ export const MermaidPrimitive = ({
       }}
       id={id}
       title={title}
+      toolbar={toolbar}
       type={type}
     >
       <MermaidPreview

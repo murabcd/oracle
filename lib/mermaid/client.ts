@@ -1,3 +1,4 @@
+import { getMermaidRenderOptions, normalizeMermaidSource } from "@/lib/mermaid";
 import type { GenerateMermaidInput, GenerateMermaidSuccess } from "./types";
 
 async function parseErrorResponse(response: Response): Promise<string> {
@@ -32,4 +33,36 @@ export async function generateMermaidRequest(
   }
 
   return (await response.json()) as GenerateMermaidSuccess;
+}
+
+export async function downloadMermaidSvg({
+  id,
+  resolvedTheme,
+  source,
+}: {
+  id: string;
+  resolvedTheme?: string;
+  source: string;
+}) {
+  const normalizedSource = normalizeMermaidSource(source);
+
+  if (!normalizedSource) {
+    throw new Error("No Mermaid source to download.");
+  }
+
+  const { renderMermaid } = await import("@vercel/beautiful-mermaid");
+  const svg = await renderMermaid(
+    normalizedSource,
+    getMermaidRenderOptions(resolvedTheme)
+  );
+  const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `oracle-${id}.svg`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

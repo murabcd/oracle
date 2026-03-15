@@ -1,7 +1,14 @@
 "use client";
 
 import { getIncomers, useReactFlow } from "@xyflow/react";
-import { CopyIcon, Loader2Icon, PlayIcon, RotateCcwIcon } from "lucide-react";
+import {
+  CopyIcon,
+  DownloadIcon,
+  Loader2Icon,
+  PlayIcon,
+  RotateCcwIcon,
+} from "lucide-react";
+import { useTheme } from "next-themes";
 import {
   type ChangeEventHandler,
   type ComponentProps,
@@ -14,7 +21,10 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { handleError } from "@/lib/error/handle";
-import { generateMermaidRequest } from "@/lib/mermaid/client";
+import {
+  downloadMermaidSvg,
+  generateMermaidRequest,
+} from "@/lib/mermaid/client";
 import {
   getDescriptionsFromImageNodes,
   getTextFromTextNodes,
@@ -55,6 +65,7 @@ export const MermaidTransform = ({
   title,
 }: MermaidTransformProps) => {
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
+  const { resolvedTheme } = useTheme();
   const { models } = useModels();
   const [loading, setLoading] = useState(false);
   const modelId = data.model ?? getDefaultModel(models);
@@ -132,6 +143,18 @@ export const MermaidTransform = ({
     toast.success("Mermaid copied");
   }, [data.generated?.source, data.source]);
 
+  const handleDownload = useCallback(async () => {
+    try {
+      await downloadMermaidSvg({
+        id,
+        resolvedTheme,
+        source: previewSource ?? "",
+      });
+    } catch (error) {
+      handleError("Error downloading Mermaid", error);
+    }
+  }, [id, previewSource, resolvedTheme]);
+
   const handleInstructionsChange: ChangeEventHandler<HTMLTextAreaElement> = (
     event
   ) => {
@@ -207,6 +230,20 @@ export const MermaidTransform = ({
           </Button>
         ),
       });
+      items.push({
+        id: `download-${id}`,
+        tooltip: "Download SVG",
+        children: (
+          <Button
+            className="rounded-full"
+            onClick={handleDownload}
+            size="icon"
+            variant="ghost"
+          >
+            <DownloadIcon size={12} />
+          </Button>
+        ),
+      });
     }
 
     return items;
@@ -214,6 +251,7 @@ export const MermaidTransform = ({
     data.generated?.source,
     data.source,
     handleCopy,
+    handleDownload,
     handleGenerate,
     id,
     loading,
