@@ -24,6 +24,20 @@ export const POST = async (request: Request) => {
     );
   }
 
+  if (
+    typeof body?.videos !== "undefined" &&
+    (!Array.isArray(body.videos) ||
+      body.videos.some(
+        (video: { url?: unknown; type?: unknown }) =>
+          typeof video?.url !== "string" || typeof video?.type !== "string"
+      ))
+  ) {
+    return Response.json(
+      { error: "Videos must be an array of typed URLs" },
+      { status: 400 }
+    );
+  }
+
   if (typeof body?.startingSpec !== "undefined") {
     const parsedStartingSpec = jsonRenderSchema.safeParse(body.startingSpec);
 

@@ -29,41 +29,46 @@ export const textModels = {
     label: "GPT-5.2",
     priceIndicator: "highest",
   }),
+  "gpt-5": withOpenAIProvider({
+    label: "GPT-5",
+    priceIndicator: "high",
+  }),
   "gpt-5-mini": withOpenAIProvider({
     label: "GPT-5 Mini",
     priceIndicator: "low",
   }),
   "gpt-5-nano": withOpenAIProvider({
     label: "GPT-5 Nano",
-    priceIndicator: "lowest",
-  }),
-  "gpt-5": withOpenAIProvider({
-    label: "GPT-5",
-    priceIndicator: "high",
+    priceIndicator: "low",
   }),
   "gpt-4.1": withOpenAIProvider({
     label: "GPT-4.1",
-    priceIndicator: "high",
+    priceIndicator: "lowest",
   }),
   "gemini-3.1-pro-preview": withGoogleProvider({
     label: "Gemini 3.1 Pro Preview",
     priceIndicator: "high",
+    supportsVideoInput: true,
   }),
   "gemini-3-flash-preview": withGoogleProvider({
     label: "Gemini 3 Flash Preview",
     priceIndicator: "low",
+    supportsVideoInput: true,
   }),
   "gemini-2.5-pro": withGoogleProvider({
     label: "Gemini 2.5 Pro",
     priceIndicator: "high",
+    supportsVideoInput: true,
   }),
   "gemini-2.5-flash": withGoogleProvider({
     label: "Gemini 2.5 Flash",
     priceIndicator: "low",
+    supportsVideoInput: true,
   }),
   "gemini-2.5-flash-lite": withGoogleProvider({
     label: "Gemini 2.5 Flash Lite",
     priceIndicator: "lowest",
+    supportsVideoInput: true,
   }),
 } satisfies Record<string, OracleModel>;
 
@@ -116,3 +121,13 @@ export const videoModels = {
 } satisfies Record<string, OracleModel>;
 
 export const descriptionModelId = "gpt-5-nano";
+
+export const filterModelsByVideoInput = (
+  models: Record<string, OracleModel>,
+  requiresVideoInput: boolean
+) =>
+  requiresVideoInput
+    ? Object.fromEntries(
+        Object.entries(models).filter(([, model]) => model.supportsVideoInput)
+      )
+    : models;

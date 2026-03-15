@@ -202,8 +202,9 @@ export const VideoTransform = ({
       const incomers = getIncomers({ id }, getNodes(), getEdges());
       const textPrompts = getTextFromTextNodes(incomers);
       const images = getImagesFromImageNodes(incomers);
+      const hasInstructions = Boolean(data.instructions?.trim().length);
 
-      if (!(textPrompts.length || images.length)) {
+      if (!(textPrompts.length || images.length || hasInstructions)) {
         throw new Error("No prompts found");
       }
 
@@ -211,7 +212,7 @@ export const VideoTransform = ({
 
       const response = await generateVideoRequest({
         modelId,
-        prompt: [data.instructions ?? "", ...textPrompts].join("\n"),
+        prompt: [data.instructions, ...textPrompts].filter(Boolean).join("\n"),
         image: images.at(0)?.url,
       });
 

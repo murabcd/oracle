@@ -5,6 +5,10 @@ export interface GenerateJsonRenderInput {
   modelId: string;
   instructions?: string;
   startingSpec?: JsonRenderSpec;
+  videos?: {
+    url: string;
+    type: string;
+  }[];
 }
 
 export interface GeneratedJsonRenderSuccess {

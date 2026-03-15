@@ -1,6 +1,6 @@
 "use client";
 
-import { getIncomers, useReactFlow } from "@xyflow/react";
+import { getIncomers, useNodeConnections, useReactFlow } from "@xyflow/react";
 import {
   CopyIcon,
   DownloadIcon,
@@ -25,9 +25,11 @@ import {
   downloadMermaidSvg,
   generateMermaidRequest,
 } from "@/lib/mermaid/client";
+import { filterModelsByVideoInput } from "@/lib/model-catalog";
 import {
   getDescriptionsFromImageNodes,
   getTextFromTextNodes,
+  getVideosFromVideoNodes,
 } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
@@ -58,6 +60,24 @@ const getDefaultModel = (
   return firstModel;
 };
 
+const getSelectedModelId = ({
+  availableModels,
+  model,
+}: {
+  availableModels: ReturnType<typeof useModels>["models"];
+  model?: string;
+}) => {
+  if (model && availableModels[model]) {
+    return model;
+  }
+
+  if (!Object.keys(availableModels).length) {
+    return "";
+  }
+
+  return getDefaultModel(availableModels);
+};
+
 export const MermaidTransform = ({
   data,
   id,
@@ -65,10 +85,33 @@ export const MermaidTransform = ({
   title,
 }: MermaidTransformProps) => {
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
+  const incomingConnections = useNodeConnections({
+    id,
+    handleType: "target",
+  });
   const { resolvedTheme } = useTheme();
   const { models } = useModels();
   const [loading, setLoading] = useState(false);
-  const modelId = data.model ?? getDefaultModel(models);
+  const hasVideoInput = useMemo(
+    () =>
+      incomingConnections.some((connection) => {
+        const sourceNode = getNodes().find(
+          (node) => node.id === connection.source
+        );
+
+        return sourceNode?.type === "video";
+      }),
+    [getNodes, incomingConnections]
+  );
+  const availableModels = useMemo(
+    () => filterModelsByVideoInput(models, hasVideoInput),
+    [hasVideoInput, models]
+  );
+  const hasAvailableModels = Object.keys(availableModels).length > 0;
+  const modelId = getSelectedModelId({
+    availableModels,
+    model: data.model,
+  });
   const previewSource = data.generated?.source ?? data.source;
 
   const handleGenerate = useCallback(async () => {
@@ -76,12 +119,23 @@ export const MermaidTransform = ({
       return;
     }
 
+    if (!hasAvailableModels) {
+      handleError("Error generating diagram", "No compatible models found");
+      return;
+    }
+
     const incomers = getIncomers({ id }, getNodes(), getEdges());
     const textPrompts = getTextFromTextNodes(incomers);
     const imageDescriptions = getDescriptionsFromImageNodes(incomers);
+    const videos = getVideosFromVideoNodes(incomers);
 
     if (
-      !(textPrompts.length || imageDescriptions.length || data.instructions)
+      !(
+        textPrompts.length ||
+        imageDescriptions.length ||
+        videos.length ||
+        data.instructions
+      )
     ) {
       handleError("Error generating diagram", "No prompts found");
       return;
@@ -105,6 +159,7 @@ export const MermaidTransform = ({
         modelId,
         instructions: data.instructions,
         startingSource: data.generated?.source ?? data.source,
+        videos,
       });
 
       updateNodeData(id, {
@@ -126,6 +181,7 @@ export const MermaidTransform = ({
     data.source,
     getEdges,
     getNodes,
+    hasAvailableModels,
     id,
     loading,
     modelId,
@@ -176,9 +232,10 @@ export const MermaidTransform = ({
         children: (
           <ModelSelector
             className="w-[200px] rounded-full"
+            disabled={!hasAvailableModels}
             id={id}
             onChange={(value) => updateNodeData(id, { model: value })}
-            options={models}
+            options={availableModels}
             value={modelId}
           />
         ),
@@ -202,6 +259,7 @@ export const MermaidTransform = ({
             children: (
               <Button
                 className="rounded-full"
+                disabled={!hasAvailableModels}
                 onClick={handleGenerate}
                 size="icon"
               >
@@ -256,7 +314,8 @@ export const MermaidTransform = ({
     id,
     loading,
     modelId,
-    models,
+    availableModels,
+    hasAvailableModels,
     updateNodeData,
   ]);
 
@@ -265,9 +324,6 @@ export const MermaidTransform = ({
       bodyClassName="flex h-full flex-col"
       contentClassName="h-full"
       data={data}
-      handles={{
-        source: false,
-      }}
       id={id}
       title={title}
       toolbar={toolbar}

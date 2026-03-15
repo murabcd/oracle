@@ -1,5 +1,5 @@
 import { useChat } from "@ai-sdk/react";
-import { getIncomers, useReactFlow } from "@xyflow/react";
+import { getIncomers, useNodeConnections, useReactFlow } from "@xyflow/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import { CopyIcon, PlayIcon, RotateCcwIcon, SquareIcon } from "lucide-react";
 import {
@@ -28,10 +28,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useReasoning } from "@/hooks/use-reasoning";
 import { handleError } from "@/lib/error/handle";
+import { filterModelsByVideoInput } from "@/lib/model-catalog";
 import {
   getDescriptionsFromImageNodes,
   getImagesFromImageNodes,
   getTextFromTextNodes,
+  getVideosFromVideoNodes,
 } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ReasoningTunnel } from "@/tunnels/reasoning";
@@ -62,6 +64,24 @@ const getDefaultModel = (models: ReturnType<typeof useModels>["models"]) => {
   return firstModel;
 };
 
+const getSelectedModelId = ({
+  availableModels,
+  model,
+}: {
+  availableModels: ReturnType<typeof useModels>["models"];
+  model?: string;
+}) => {
+  if (model && availableModels[model]) {
+    return model;
+  }
+
+  if (!Object.keys(availableModels).length) {
+    return "";
+  }
+
+  return getDefaultModel(availableModels);
+};
+
 const getMessageText = (message: UIMessage) =>
   message.parts.find((part) => part.type === "text")?.text ?? "";
 
@@ -73,6 +93,7 @@ const buildTextToolbar = ({
   messages,
   modelId,
   models,
+  hasAvailableModels,
   status,
   stop,
   updateNodeData,
@@ -84,6 +105,7 @@ const buildTextToolbar = ({
   messages: UIMessage[];
   modelId: string;
   models: ReturnType<typeof useModels>["models"];
+  hasAvailableModels: boolean;
   status: ReturnType<typeof useChat>["status"];
   stop: ReturnType<typeof useChat>["stop"];
   updateNodeData: ReturnType<typeof useReactFlow>["updateNodeData"];
@@ -94,6 +116,7 @@ const buildTextToolbar = ({
       children: (
         <ModelSelector
           className="w-[200px] rounded-full"
+          disabled={!hasAvailableModels}
           key={id}
           onChange={(value) => updateNodeData(id, { model: value })}
           options={models}
@@ -102,6 +125,20 @@ const buildTextToolbar = ({
       ),
     },
   ];
+
+  if (!hasAvailableModels) {
+    items.push({
+      id: `generate-${id}`,
+      tooltip: "No compatible models",
+      children: (
+        <Button className="rounded-full" disabled size="icon">
+          <PlayIcon size={12} />
+        </Button>
+      ),
+    });
+
+    return items;
+  }
 
   if (status === "submitted" || status === "streaming") {
     items.push({
@@ -238,8 +275,31 @@ export const TextTransform = ({
   title,
 }: TextTransformProps) => {
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
+  const incomingConnections = useNodeConnections({
+    id,
+    handleType: "target",
+  });
   const { models } = useModels();
-  const modelId = data.model ?? getDefaultModel(models);
+  const hasVideoInput = useMemo(
+    () =>
+      incomingConnections.some((connection) => {
+        const sourceNode = getNodes().find(
+          (node) => node.id === connection.source
+        );
+
+        return sourceNode?.type === "video";
+      }),
+    [getNodes, incomingConnections]
+  );
+  const availableModels = useMemo(
+    () => filterModelsByVideoInput(models, hasVideoInput),
+    [hasVideoInput, models]
+  );
+  const hasAvailableModels = Object.keys(availableModels).length > 0;
+  const modelId = getSelectedModelId({
+    availableModels,
+    model: data.model,
+  });
   const [reasoning, setReasoning] = useReasoning();
   const { sendMessage, messages, setMessages, status, stop } = useChat({
     transport: new DefaultChatTransport({
@@ -271,12 +331,26 @@ export const TextTransform = ({
   });
 
   const handleGenerate = useCallback(async () => {
+    if (!hasAvailableModels) {
+      handleError("Error generating text", "No compatible models found");
+      return;
+    }
+
     const incomers = getIncomers({ id }, getNodes(), getEdges());
     const textPrompts = getTextFromTextNodes(incomers);
     const images = getImagesFromImageNodes(incomers);
     const imageDescriptions = getDescriptionsFromImageNodes(incomers);
+    const videos = getVideosFromVideoNodes(incomers);
 
-    if (!(textPrompts.length || data.instructions)) {
+    if (
+      !(
+        textPrompts.length ||
+        imageDescriptions.length ||
+        images.length ||
+        videos.length ||
+        data.instructions
+      )
+    ) {
       handleError("Error generating text", "No prompts found");
       return;
     }
@@ -305,10 +379,18 @@ export const TextTransform = ({
       });
     }
 
+    for (const video of videos) {
+      attachments.push({
+        mediaType: video.type,
+        url: video.url,
+        type: "file",
+      });
+    }
+
     setMessages([]);
     await sendMessage(
       {
-        text: content.join("\n"),
+        text: content.join("\n") || "Use the provided media as context.",
         files: attachments,
       },
       {
@@ -322,6 +404,7 @@ export const TextTransform = ({
     data.instructions,
     getEdges,
     getNodes,
+    hasAvailableModels,
     id,
     modelId,
     setMessages,
@@ -355,7 +438,8 @@ export const TextTransform = ({
         id,
         messages,
         modelId,
-        models,
+        models: availableModels,
+        hasAvailableModels,
         status,
         stop,
         updateNodeData,
@@ -370,7 +454,8 @@ export const TextTransform = ({
       status,
       stop,
       handleCopy,
-      models,
+      availableModels,
+      hasAvailableModels,
     ]
   );
 

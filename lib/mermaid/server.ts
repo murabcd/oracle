@@ -42,7 +42,19 @@ export const generateMermaid = async (input: GenerateMermaidInput) => {
   const result = await generateText({
     model: getTextModel(input.modelId),
     system: mermaidSystemPrompt,
-    prompt: buildPrompt(input),
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: buildPrompt(input) },
+          ...(input.videos ?? []).map((video) => ({
+            type: "file" as const,
+            mediaType: video.type,
+            data: new URL(video.url),
+          })),
+        ],
+      },
+    ],
   });
 
   return {

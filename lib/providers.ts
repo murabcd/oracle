@@ -230,4 +230,5 @@ export interface OracleModel {
   priceIndicator?: PriceBracket;
   disabled?: boolean;
   default?: boolean;
+  supportsVideoInput?: boolean;
 }

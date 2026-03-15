@@ -137,7 +137,11 @@ export const ModelSelector = ({
 
   useEffect(() => {
     if (value && !options[value]) {
-      onChange?.(Object.keys(options)[0]);
+      const fallbackModel = Object.keys(options)[0];
+
+      if (fallbackModel) {
+        onChange?.(fallbackModel);
+      }
     }
   }, [value, options, onChange]);
 
@@ -188,7 +192,11 @@ export const ModelSelector = ({
               <ModelIcon chef={activeModel.chef} data={activeModel} />
               <span className="block truncate">{activeModel.label}</span>
             </div>
-          ) : null}
+          ) : (
+            <span className="block truncate text-muted-foreground">
+              No models available
+            </span>
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="p-0">

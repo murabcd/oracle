@@ -213,6 +213,10 @@ const appendDisplayField = (
   }
 
   if (typeof entryValue === "string") {
+    if (entryValue.trim().length === 0) {
+      return;
+    }
+
     const parsedJson = tryParseJsonString(entryValue);
 
     if (parsedJson) {
@@ -476,8 +480,7 @@ export const NodeLayout = ({
             )}
             handles={{
               target: handles?.target ?? true,
-              source:
-                handles?.source ?? (type !== "video" && type !== "json-render"),
+              source: handles?.source ?? true,
             }}
           >
             {type !== "drop" && (

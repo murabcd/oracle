@@ -37,12 +37,42 @@ export const getImagesFromImageNodes = (nodes: Node[]) => {
   return [...sourceImages, ...generatedImages];
 };
 
+export const getVideosFromVideoNodes = (nodes: Node[]) => {
+  const sourceVideos = nodes
+    .filter((node) => node.type === "video")
+    .map(
+      (node) =>
+        (
+          node.data as {
+            content?: {
+              url: string;
+              type: string;
+            };
+          }
+        ).content
+    )
+    .filter(Boolean) as { url: string; type: string }[];
+
+  const generatedVideos = nodes
+    .filter((node) => node.type === "video")
+    .map(
+      (node) =>
+        (
+          node.data as {
+            generated?: {
+              url: string;
+              type: string;
+            };
+          }
+        ).generated
+    )
+    .filter(Boolean) as { url: string; type: string }[];
+
+  return [...sourceVideos, ...generatedVideos];
+};
+
 export const isValidSourceTarget = (source: Node, _target: Node) => {
-  if (
-    source.type === "video" ||
-    source.type === "drop" ||
-    source.type === "mermaid"
-  ) {
+  if (source.type === "drop") {
     return false;
   }
 

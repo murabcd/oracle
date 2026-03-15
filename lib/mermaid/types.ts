@@ -3,6 +3,10 @@ export interface GenerateMermaidInput {
   modelId: string;
   instructions?: string;
   startingSource?: string;
+  videos?: {
+    url: string;
+    type: string;
+  }[];
 }
 
 export interface GenerateMermaidSuccess {

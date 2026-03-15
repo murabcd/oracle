@@ -69,9 +69,10 @@ export const ImageTransform = ({
     const incomers = getIncomers({ id }, getNodes(), getEdges());
     const textNodes = getTextFromTextNodes(incomers);
     const imageNodes = getImagesFromImageNodes(incomers);
+    const hasInstructions = Boolean(data.instructions?.trim().length);
 
     try {
-      if (!(textNodes.length || imageNodes.length)) {
+      if (!(textNodes.length || imageNodes.length || hasInstructions)) {
         throw new Error("No input provided");
       }
 

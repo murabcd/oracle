@@ -83,9 +83,6 @@ export const MermaidPrimitive = ({
       bodyClassName="flex h-full flex-col"
       contentClassName="h-full"
       data={data}
-      handles={{
-        source: false,
-      }}
       id={id}
       title={title}
       toolbar={toolbar}

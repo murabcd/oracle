@@ -38,7 +38,17 @@ describe("streamJsonRender", () => {
     expect(streamText).toHaveBeenCalledWith({
       model: { provider: "openai-model" },
       system: expect.any(String),
-      prompt: expect.stringContaining("Instructions:\nKeep it minimal"),
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: expect.stringContaining("Instructions:\nKeep it minimal"),
+            },
+          ],
+        },
+      ],
     });
     expect(result.textStream).toBeInstanceOf(ReadableStream);
   });
@@ -71,7 +81,17 @@ describe("streamJsonRender", () => {
 
     expect(streamText).toHaveBeenCalledWith(
       expect.objectContaining({
-        prompt: expect.stringContaining("Update the copy"),
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: expect.stringContaining("Update the copy"),
+              },
+            ],
+          },
+        ],
       })
     );
   });

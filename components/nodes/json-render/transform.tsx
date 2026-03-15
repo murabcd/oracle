@@ -1,4 +1,4 @@
-import { getIncomers, useReactFlow } from "@xyflow/react";
+import { getIncomers, useNodeConnections, useReactFlow } from "@xyflow/react";
 import { CopyIcon, Loader2Icon, PlayIcon, RotateCcwIcon } from "lucide-react";
 import {
   type ChangeEventHandler,
@@ -13,9 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { handleError } from "@/lib/error/handle";
 import { generateJsonRenderStreamRequest } from "@/lib/json-render/client";
+import { filterModelsByVideoInput } from "@/lib/model-catalog";
 import {
   getDescriptionsFromImageNodes,
   getTextFromTextNodes,
+  getVideosFromVideoNodes,
 } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
@@ -46,6 +48,24 @@ const getDefaultModel = (
   return firstModel;
 };
 
+const getSelectedModelId = ({
+  availableModels,
+  model,
+}: {
+  availableModels: ReturnType<typeof useModels>["models"];
+  model?: string;
+}) => {
+  if (model && availableModels[model]) {
+    return model;
+  }
+
+  if (!Object.keys(availableModels).length) {
+    return "";
+  }
+
+  return getDefaultModel(availableModels);
+};
+
 export const JsonRenderTransform = ({
   data,
   id,
@@ -53,9 +73,32 @@ export const JsonRenderTransform = ({
   title,
 }: JsonRenderTransformProps) => {
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
+  const incomingConnections = useNodeConnections({
+    id,
+    handleType: "target",
+  });
   const { models } = useModels();
   const [loading, setLoading] = useState(false);
-  const modelId = data.model ?? getDefaultModel(models);
+  const hasVideoInput = useMemo(
+    () =>
+      incomingConnections.some((connection) => {
+        const sourceNode = getNodes().find(
+          (node) => node.id === connection.source
+        );
+
+        return sourceNode?.type === "video";
+      }),
+    [getNodes, incomingConnections]
+  );
+  const availableModels = useMemo(
+    () => filterModelsByVideoInput(models, hasVideoInput),
+    [hasVideoInput, models]
+  );
+  const hasAvailableModels = Object.keys(availableModels).length > 0;
+  const modelId = getSelectedModelId({
+    availableModels,
+    model: data.model,
+  });
   const previewSpec = data.previewSpec ?? data.generated?.spec;
 
   const handleGenerate = useCallback(async () => {
@@ -63,12 +106,23 @@ export const JsonRenderTransform = ({
       return;
     }
 
+    if (!hasAvailableModels) {
+      handleError("Error generating UI", "No compatible models found");
+      return;
+    }
+
     const incomers = getIncomers({ id }, getNodes(), getEdges());
     const textPrompts = getTextFromTextNodes(incomers);
     const imageDescriptions = getDescriptionsFromImageNodes(incomers);
+    const videos = getVideosFromVideoNodes(incomers);
 
     if (
-      !(textPrompts.length || imageDescriptions.length || data.instructions)
+      !(
+        textPrompts.length ||
+        imageDescriptions.length ||
+        videos.length ||
+        data.instructions
+      )
     ) {
       handleError("Error generating UI", "No prompts found");
       return;
@@ -97,6 +151,7 @@ export const JsonRenderTransform = ({
           modelId,
           instructions: data.instructions,
           startingSpec: data.generated?.spec,
+          videos,
         },
         {
           onSpec: (spec) => {
@@ -139,6 +194,7 @@ export const JsonRenderTransform = ({
     data.instructions,
     getEdges,
     getNodes,
+    hasAvailableModels,
     id,
     loading,
     modelId,
@@ -175,9 +231,10 @@ export const JsonRenderTransform = ({
         children: (
           <ModelSelector
             className="w-[200px] rounded-full"
+            disabled={!hasAvailableModels}
             id={id}
             onChange={(value) => updateNodeData(id, { model: value })}
-            options={models}
+            options={availableModels}
             value={modelId}
           />
         ),
@@ -201,6 +258,7 @@ export const JsonRenderTransform = ({
             children: (
               <Button
                 className="rounded-full"
+                disabled={!hasAvailableModels}
                 onClick={handleGenerate}
                 size="icon"
               >
@@ -240,7 +298,8 @@ export const JsonRenderTransform = ({
     id,
     loading,
     modelId,
-    models,
+    availableModels,
+    hasAvailableModels,
     updateNodeData,
   ]);
 

@@ -45,5 +45,17 @@ export const streamJsonRender = (input: GenerateJsonRenderInput) =>
   streamText({
     model: getTextModel(input.modelId),
     system: jsonRenderSystemPrompt,
-    prompt: buildStreamingPrompt(input),
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: buildStreamingPrompt(input) },
+          ...(input.videos ?? []).map((video) => ({
+            type: "file" as const,
+            mediaType: video.type,
+            data: new URL(video.url),
+          })),
+        ],
+      },
+    ],
   });
