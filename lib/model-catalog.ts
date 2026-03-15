@@ -23,10 +23,10 @@ export const textModels = {
   "gpt-5.4": withOpenAIProvider({
     default: true,
     label: "GPT-5.4",
-    priceIndicator: "high",
+    priceIndicator: "highest",
   }),
-  "gpt-5.4-pro": withOpenAIProvider({
-    label: "GPT-5.4 Pro",
+  "gpt-5.2": withOpenAIProvider({
+    label: "GPT-5.2",
     priceIndicator: "highest",
   }),
   "gpt-5-mini": withOpenAIProvider({
@@ -37,9 +37,13 @@ export const textModels = {
     label: "GPT-5 Nano",
     priceIndicator: "lowest",
   }),
-  "o4-mini": withOpenAIProvider({
-    label: "o4-mini",
-    priceIndicator: "low",
+  "gpt-5": withOpenAIProvider({
+    label: "GPT-5",
+    priceIndicator: "high",
+  }),
+  "gpt-4.1": withOpenAIProvider({
+    label: "GPT-4.1",
+    priceIndicator: "high",
   }),
   "gemini-3.1-pro-preview": withGoogleProvider({
     label: "Gemini 3.1 Pro Preview",
