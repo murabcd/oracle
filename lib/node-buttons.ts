@@ -1,4 +1,5 @@
 import {
+  BarChart3Icon,
   FilmIcon,
   ImageIcon,
   PaintbrushIcon,
@@ -11,6 +12,11 @@ export const nodeButtons = [
     id: "text",
     label: "Text",
     icon: TextIcon,
+  },
+  {
+    id: "chart",
+    label: "Chart",
+    icon: BarChart3Icon,
   },
   {
     id: "image",
