@@ -1,10 +1,7 @@
-import { useReactFlow } from "@xyflow/react";
 import { AlertCircleIcon } from "lucide-react";
-import { type ChangeEventHandler, useMemo } from "react";
+import { useMemo } from "react";
 import { NodeLayout } from "@/components/nodes/layout";
-import { Textarea } from "@/components/ui/textarea";
 import { parseJsonRenderSpec } from "@/lib/json-render/catalog";
-import { patchNodeConfig } from "@/lib/node-data";
 import type { JsonRenderNodeProps } from ".";
 import { JsonRenderPreview } from "./preview";
 
@@ -12,15 +9,12 @@ type JsonRenderPrimitiveProps = JsonRenderNodeProps & {
   title: string;
 };
 
-const placeholder = "Enter JSON...";
-
 export const JsonRenderPrimitive = ({
   data,
   id,
   type,
   title,
 }: JsonRenderPrimitiveProps) => {
-  const { updateNodeData } = useReactFlow();
   const parsed = useMemo(() => {
     if (!data.config.json?.trim()) {
       return { error: null, spec: null };
@@ -39,31 +33,6 @@ export const JsonRenderPrimitive = ({
     }
   }, [data.config.json]);
 
-  const handleChange: ChangeEventHandler<HTMLTextAreaElement> = (event) => {
-    const nextJson = event.target.value;
-
-    try {
-      const nextSpec = nextJson.trim()
-        ? parseJsonRenderSpec(nextJson)
-        : undefined;
-
-      updateNodeData(
-        id,
-        patchNodeConfig(data, {
-          json: nextJson,
-          spec: nextSpec,
-        })
-      );
-    } catch {
-      updateNodeData(
-        id,
-        patchNodeConfig(data, {
-          json: nextJson,
-        })
-      );
-    }
-  };
-
   return (
     <NodeLayout
       bodyClassName="flex h-full flex-col"
@@ -78,16 +47,10 @@ export const JsonRenderPrimitive = ({
       ) : (
         <div className="flex min-h-72 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary/60 px-4 text-center">
           <p className="max-w-52 text-pretty text-muted-foreground text-sm">
-            Paste a valid JSON UI spec to preview it here.
+            Connect a text, image, or video node to generate UI here.
           </p>
         </div>
       )}
-      <Textarea
-        className="shrink-0 resize-none rounded-none border-none bg-transparent! font-mono text-xs shadow-none focus-visible:ring-0"
-        onChange={handleChange}
-        placeholder={placeholder}
-        value={data.config.json ?? ""}
-      />
       {parsed.error ? (
         <div className="flex items-center gap-2 border-t px-3 py-2 text-muted-foreground text-xs">
           <AlertCircleIcon size={12} />
