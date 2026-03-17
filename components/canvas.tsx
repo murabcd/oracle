@@ -28,6 +28,7 @@ import {
   applyDefaultNodeWidth,
   getNodeStyleWithDefaultWidth,
 } from "@/lib/node-style";
+import { isEditableTarget } from "@/lib/utils";
 import { isValidSourceTarget } from "@/lib/xyflow";
 import { NodeDropzoneProvider } from "@/providers/node-dropzone";
 import { NodeOperationsProvider } from "@/providers/node-operations";
@@ -85,13 +86,6 @@ const withNodeDefaults = (node: Node, fallbackTimestamp: string): Node => {
     data: initializeNodeData(node.data, fallbackTimestamp),
   });
 };
-
-const isEditableTarget = (target: EventTarget | null) =>
-  target instanceof HTMLElement &&
-  (target.isContentEditable ||
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement);
 
 const canvasReducer = (
   state: CanvasState,
@@ -498,7 +492,10 @@ const useCanvasController = (props: ReactFlowProps) => {
 
   useEffect(() => {
     const handleWindowPaste = (event: ClipboardEvent) => {
-      if (isEditableTarget(event.target)) {
+      if (
+        event.defaultPrevented ||
+        isEditableTarget(event.target, document.activeElement)
+      ) {
         return;
       }
 
