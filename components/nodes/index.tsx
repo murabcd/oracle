@@ -1,4 +1,5 @@
 import { ChartNode } from "./chart";
+import { DocumentNode } from "./document";
 import { DropNode } from "./drop";
 import { ImageNode } from "./image";
 import { JsonRenderNode } from "./json-render";
@@ -8,6 +9,7 @@ import { VideoNode } from "./video";
 
 export const nodeTypes = {
   chart: ChartNode,
+  document: DocumentNode,
   image: ImageNode,
   "json-render": JsonRenderNode,
   mermaid: MermaidNode,

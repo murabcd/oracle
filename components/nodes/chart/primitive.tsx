@@ -43,7 +43,7 @@ export const ChartPrimitive = ({
       type={type}
     >
       <ChartPreview
-        emptyMessage="Connect a text, image, or video node to generate a chart here."
+        emptyMessage="Connect a text, document, image, or video node to generate a chart here."
         spec={parsed.spec ?? undefined}
       />
       {parsed.error ? (

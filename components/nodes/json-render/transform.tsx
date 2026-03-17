@@ -23,6 +23,8 @@ import {
 } from "@/lib/node-data";
 import {
   getDescriptionsFromImageNodes,
+  getDocumentsFromDocumentNodes,
+  getTextFromDocumentNodes,
   getTextFromTextNodes,
   getVideosFromVideoNodes,
 } from "@/lib/xyflow";
@@ -73,6 +75,47 @@ const getSelectedModelId = ({
   return getDefaultModel(availableModels);
 };
 
+const buildContextPrompt = ({
+  documentTexts,
+  imageDescriptions,
+  textPrompts,
+}: {
+  documentTexts: string[];
+  imageDescriptions: string[];
+  textPrompts: string[];
+}) => {
+  const content: string[] = [];
+
+  if (textPrompts.length) {
+    content.push("--- Text Context ---", ...textPrompts);
+  }
+
+  if (documentTexts.length) {
+    content.push("--- Document Context ---", ...documentTexts);
+  }
+
+  if (imageDescriptions.length) {
+    content.push("--- Image Context ---", ...imageDescriptions);
+  }
+
+  return content.join("\n");
+};
+
+const isRenderablePreviewSpec = (spec: {
+  elements?: unknown;
+  root?: unknown;
+}) => {
+  if (
+    typeof spec.root !== "string" ||
+    !spec.elements ||
+    typeof spec.elements !== "object"
+  ) {
+    return false;
+  }
+
+  return spec.root in spec.elements;
+};
+
 export const JsonRenderTransform = ({
   data,
   id,
@@ -120,29 +163,21 @@ export const JsonRenderTransform = ({
 
     const incomers = getIncomers({ id }, getNodes(), getEdges());
     const textPrompts = getTextFromTextNodes(incomers);
+    const documentTexts = getTextFromDocumentNodes(incomers);
+    const documents = getDocumentsFromDocumentNodes(incomers);
     const imageDescriptions = getDescriptionsFromImageNodes(incomers);
     const videos = getVideosFromVideoNodes(incomers);
+    const prompt = buildContextPrompt({
+      documentTexts,
+      imageDescriptions,
+      textPrompts,
+    });
 
     if (
-      !(
-        textPrompts.length ||
-        imageDescriptions.length ||
-        videos.length ||
-        data.config.instructions
-      )
+      !(prompt || documents.length || videos.length || data.config.instructions)
     ) {
       handleError("Error generating UI", "No prompts found");
       return;
-    }
-
-    const content: string[] = [];
-
-    if (textPrompts.length) {
-      content.push("--- Text Context ---", ...textPrompts);
-    }
-
-    if (imageDescriptions.length) {
-      content.push("--- Image Context ---", ...imageDescriptions);
     }
 
     try {
@@ -158,7 +193,8 @@ export const JsonRenderTransform = ({
 
       const response = await generateJsonRenderStreamRequest(
         {
-          prompt: content.join("\n"),
+          documents,
+          prompt,
           modelId,
           instructions: data.config.instructions,
           startingSpec: data.result?.spec,
@@ -166,12 +202,7 @@ export const JsonRenderTransform = ({
         },
         {
           onSpec: (spec) => {
-            if (
-              typeof spec.root !== "string" ||
-              !spec.elements ||
-              typeof spec.elements !== "object" ||
-              !(spec.root in spec.elements)
-            ) {
+            if (!isRenderablePreviewSpec(spec)) {
               return;
             }
 

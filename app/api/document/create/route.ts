@@ -1,5 +1,4 @@
-import { jsonRenderSchema } from "@/lib/json-render/catalog";
-import { streamJsonRender } from "@/lib/json-render/server";
+import { generateDocument } from "@/lib/document/server";
 
 export const maxDuration = 60;
 
@@ -53,22 +52,17 @@ export const POST = async (request: Request) => {
     );
   }
 
-  if (typeof body?.startingSpec !== "undefined") {
-    const parsedStartingSpec = jsonRenderSchema.safeParse(body.startingSpec);
-
-    if (!parsedStartingSpec.success) {
-      return Response.json(
-        { error: "Starting spec must be a valid json-render spec" },
-        { status: 400 }
-      );
-    }
+  if (
+    typeof body?.startingText !== "undefined" &&
+    typeof body.startingText !== "string"
+  ) {
+    return Response.json(
+      { error: "Starting text must be a string" },
+      { status: 400 }
+    );
   }
 
-  const result = streamJsonRender(body);
+  const response = await generateDocument(body);
 
-  return new Response(result.textStream.pipeThrough(new TextEncoderStream()), {
-    headers: {
-      "content-type": "text/plain; charset=utf-8",
-    },
-  });
+  return Response.json(response);
 };

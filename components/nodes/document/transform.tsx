@@ -12,8 +12,7 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useNodeGenerateHotkeys } from "@/hooks/use-node-generate-hotkeys";
-import { serializeChartSpec } from "@/lib/chart/catalog";
-import { generateChartRequest } from "@/lib/chart/client";
+import { generateDocumentRequest } from "@/lib/document/client";
 import { handleError } from "@/lib/error/handle";
 import { filterModelsByVideoInput } from "@/lib/model-catalog";
 import {
@@ -31,10 +30,10 @@ import {
 } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
-import type { ChartNodeProps } from ".";
-import { ChartPreview } from "./preview";
+import type { DocumentNodeProps } from ".";
+import { DocumentPreview } from "./preview";
 
-type ChartTransformProps = ChartNodeProps & {
+type DocumentTransformProps = DocumentNodeProps & {
   title: string;
 };
 
@@ -76,12 +75,38 @@ const getSelectedModelId = ({
   return getDefaultModel(availableModels);
 };
 
-export const ChartTransform = ({
+const buildPrompt = ({
+  documentTexts,
+  imageDescriptions,
+  textPrompts,
+}: {
+  documentTexts: string[];
+  imageDescriptions: string[];
+  textPrompts: string[];
+}) => {
+  const content: string[] = [];
+
+  if (textPrompts.length) {
+    content.push("--- Text Context ---", ...textPrompts);
+  }
+
+  if (documentTexts.length) {
+    content.push("--- Document Context ---", ...documentTexts);
+  }
+
+  if (imageDescriptions.length) {
+    content.push("--- Image Context ---", ...imageDescriptions);
+  }
+
+  return content.join("\n");
+};
+
+export const DocumentTransform = ({
   data,
   id,
   type,
   title,
-}: ChartTransformProps) => {
+}: DocumentTransformProps) => {
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
   const incomingConnections = useNodeConnections({
     id,
@@ -109,11 +134,10 @@ export const ChartTransform = ({
     availableModels,
     model: data.config.model,
   });
-  const currentSpec = data.result?.spec ?? data.config.spec;
-  const previewJson =
-    data.result?.json ??
-    data.config.json ??
-    (currentSpec ? serializeChartSpec(currentSpec) : undefined);
+  const previewText =
+    data.result?.generated && !data.config.source
+      ? data.result.text
+      : undefined;
 
   const handleGenerate = useCallback(async () => {
     if (loading) {
@@ -121,7 +145,7 @@ export const ChartTransform = ({
     }
 
     if (!hasAvailableModels) {
-      handleError("Error generating chart", "No compatible models found");
+      handleError("Error generating document", "No compatible models found");
       return;
     }
 
@@ -131,76 +155,61 @@ export const ChartTransform = ({
     const documents = getDocumentsFromDocumentNodes(incomers);
     const imageDescriptions = getDescriptionsFromImageNodes(incomers);
     const videos = getVideosFromVideoNodes(incomers);
+    const prompt = buildPrompt({
+      documentTexts,
+      imageDescriptions,
+      textPrompts,
+    });
 
     if (
-      !(
-        textPrompts.length ||
-        documentTexts.length ||
-        documents.length ||
-        imageDescriptions.length ||
-        videos.length ||
-        data.config.instructions ||
-        currentSpec
-      )
+      !(prompt || documents.length || videos.length || data.config.instructions)
     ) {
-      handleError("Error generating chart", "No prompts found");
+      handleError("Error generating document", "No prompts found");
       return;
-    }
-
-    const content: string[] = [];
-
-    if (textPrompts.length) {
-      content.push("--- Text Context ---", ...textPrompts);
-    }
-
-    if (documentTexts.length) {
-      content.push("--- Document Context ---", ...documentTexts);
-    }
-
-    if (imageDescriptions.length) {
-      content.push("--- Image Context ---", ...imageDescriptions);
     }
 
     try {
       setLoading(true);
       updateNodeData(id, markNodeRunning(data));
 
-      const response = await generateChartRequest({
+      const response = await generateDocumentRequest({
         documents,
-        prompt: content.join("\n"),
+        prompt,
         modelId,
         instructions: data.config.instructions,
-        startingSpec: currentSpec,
+        startingText: previewText,
         videos,
       });
+
+      if ("error" in response) {
+        throw new Error(response.error);
+      }
 
       updateNodeData(
         id,
         replaceNodeResult(data, {
-          json: response.json,
+          generated: true,
           output: {
-            json: response.spec,
-            text: response.json,
+            text: response.text,
           },
-          spec: response.spec,
+          text: response.text,
         })
       );
 
-      toast.success("Chart generated");
+      toast.success("Document generated");
     } catch (error) {
       updateNodeData(
         id,
         markNodeError(
           data,
-          error instanceof Error ? error.message : "Failed to generate chart"
+          error instanceof Error ? error.message : "Failed to generate document"
         )
       );
-      handleError("Error generating chart", error);
+      handleError("Error generating document", error);
     } finally {
       setLoading(false);
     }
   }, [
-    currentSpec,
     data,
     getEdges,
     getNodes,
@@ -208,17 +217,20 @@ export const ChartTransform = ({
     id,
     loading,
     modelId,
+    previewText,
     updateNodeData,
   ]);
 
   const handleCopy = useCallback(() => {
-    if (!previewJson) {
+    const text = data.result?.text;
+
+    if (!text) {
       return;
     }
 
-    navigator.clipboard.writeText(previewJson);
-    toast.success("Chart JSON copied");
-  }, [previewJson]);
+    navigator.clipboard.writeText(text);
+    toast.success("Document copied");
+  }, [data.result?.text]);
 
   const handleInstructionsChange: ChangeEventHandler<HTMLTextAreaElement> = (
     event
@@ -239,6 +251,7 @@ export const ChartTransform = ({
       )
     );
   };
+
   const textareaHotkeysRef = useNodeGenerateHotkeys({
     disabled: loading || !hasAvailableModels,
     onGenerate: handleGenerate,
@@ -281,7 +294,7 @@ export const ChartTransform = ({
           }
         : {
             id: `generate-${id}`,
-            tooltip: currentSpec ? "Regenerate" : "Generate",
+            tooltip: data.result?.generated ? "Regenerate" : "Generate",
             children: (
               <Button
                 className="rounded-full"
@@ -289,7 +302,7 @@ export const ChartTransform = ({
                 onClick={handleGenerate}
                 size="icon"
               >
-                {currentSpec ? (
+                {data.result?.generated ? (
                   <RotateCcwIcon size={12} />
                 ) : (
                   <PlayIcon size={12} />
@@ -299,10 +312,10 @@ export const ChartTransform = ({
           }
     );
 
-    if (previewJson) {
+    if (data.result?.generated && data.result.text) {
       items.push({
         id: `copy-${id}`,
-        tooltip: "Copy chart JSON",
+        tooltip: "Copy document",
         children: (
           <Button
             className="rounded-full"
@@ -319,7 +332,6 @@ export const ChartTransform = ({
     return items;
   }, [
     availableModels,
-    currentSpec,
     data,
     handleCopy,
     handleGenerate,
@@ -327,7 +339,6 @@ export const ChartTransform = ({
     id,
     loading,
     modelId,
-    previewJson,
     updateNodeData,
   ]);
 
@@ -341,9 +352,11 @@ export const ChartTransform = ({
       toolbar={toolbar}
       type={type}
     >
-      <ChartPreview
-        emptyMessage="Press play to generate a chart."
-        spec={currentSpec}
+      <DocumentPreview
+        emptyMessage="Press play to generate a document."
+        source={data.config.source}
+        text={previewText}
+        title={title}
       />
       <Textarea
         className="shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"

@@ -3,7 +3,9 @@ import type { FileUIPart, UIMessage } from "ai";
 import type { TextNodeConfig, TextNodeResult } from "@/components/nodes/text";
 import {
   getDescriptionsFromImageNodes,
+  getDocumentsFromDocumentNodes,
   getImagesFromImageNodes,
+  getTextFromDocumentNodes,
   getTextFromTextNodes,
   getVideosFromVideoNodes,
 } from "@/lib/xyflow";
@@ -21,6 +23,8 @@ export const buildTextNodeExecutionInput = ({
   instructions?: TextNodeConfig["instructions"];
 }): TextNodeExecutionInput => {
   const textPrompts = getTextFromTextNodes(incomers);
+  const documentTexts = getTextFromDocumentNodes(incomers);
+  const documents = getDocumentsFromDocumentNodes(incomers);
   const images = getImagesFromImageNodes(incomers);
   const imageDescriptions = getDescriptionsFromImageNodes(incomers);
   const videos = getVideosFromVideoNodes(incomers);
@@ -28,8 +32,10 @@ export const buildTextNodeExecutionInput = ({
   if (
     !(
       textPrompts.length ||
+      documentTexts.length ||
       imageDescriptions.length ||
       images.length ||
+      documents.length ||
       videos.length ||
       instructions
     )
@@ -45,6 +51,10 @@ export const buildTextNodeExecutionInput = ({
 
   if (textPrompts.length) {
     content.push("--- Text Prompts ---", ...textPrompts);
+  }
+
+  if (documentTexts.length) {
+    content.push("--- Document Text ---", ...documentTexts);
   }
 
   if (imageDescriptions.length) {
@@ -66,6 +76,14 @@ export const buildTextNodeExecutionInput = ({
       mediaType: video.type,
       type: "file",
       url: video.url,
+    });
+  }
+
+  for (const document of documents) {
+    attachments.push({
+      mediaType: document.type,
+      type: "file",
+      url: document.url,
     });
   }
 

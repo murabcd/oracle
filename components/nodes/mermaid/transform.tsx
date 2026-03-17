@@ -35,6 +35,8 @@ import {
 } from "@/lib/node-data";
 import {
   getDescriptionsFromImageNodes,
+  getDocumentsFromDocumentNodes,
+  getTextFromDocumentNodes,
   getTextFromTextNodes,
   getVideosFromVideoNodes,
 } from "@/lib/xyflow";
@@ -133,12 +135,16 @@ export const MermaidTransform = ({
 
     const incomers = getIncomers({ id }, getNodes(), getEdges());
     const textPrompts = getTextFromTextNodes(incomers);
+    const documentTexts = getTextFromDocumentNodes(incomers);
+    const documents = getDocumentsFromDocumentNodes(incomers);
     const imageDescriptions = getDescriptionsFromImageNodes(incomers);
     const videos = getVideosFromVideoNodes(incomers);
 
     if (
       !(
         textPrompts.length ||
+        documentTexts.length ||
+        documents.length ||
         imageDescriptions.length ||
         videos.length ||
         data.config.instructions
@@ -154,6 +160,10 @@ export const MermaidTransform = ({
       content.push("--- Text Context ---", ...textPrompts);
     }
 
+    if (documentTexts.length) {
+      content.push("--- Document Context ---", ...documentTexts);
+    }
+
     if (imageDescriptions.length) {
       content.push("--- Image Context ---", ...imageDescriptions);
     }
@@ -163,6 +173,7 @@ export const MermaidTransform = ({
       updateNodeData(id, markNodeRunning(data));
 
       const response = await generateMermaidRequest({
+        documents,
         prompt: content.join("\n"),
         modelId,
         instructions: data.config.instructions,

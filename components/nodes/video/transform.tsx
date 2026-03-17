@@ -21,7 +21,11 @@ import {
   patchNodeConfig,
   replaceNodeResult,
 } from "@/lib/node-data";
-import { getImagesFromImageNodes, getTextFromTextNodes } from "@/lib/xyflow";
+import {
+  getImagesFromImageNodes,
+  getTextFromDocumentNodes,
+  getTextFromTextNodes,
+} from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
 import type { VideoNodeProps } from ".";
@@ -215,10 +219,18 @@ export const VideoTransform = ({
 
       const incomers = getIncomers({ id }, getNodes(), getEdges());
       const textPrompts = getTextFromTextNodes(incomers);
+      const documentTexts = getTextFromDocumentNodes(incomers);
       const images = getImagesFromImageNodes(incomers);
       const hasInstructions = Boolean(data.config.instructions?.trim().length);
 
-      if (!(textPrompts.length || images.length || hasInstructions)) {
+      if (
+        !(
+          textPrompts.length ||
+          documentTexts.length ||
+          images.length ||
+          hasInstructions
+        )
+      ) {
         throw new Error("No prompts found");
       }
 
@@ -227,7 +239,7 @@ export const VideoTransform = ({
 
       const response = await generateVideoRequest({
         modelId,
-        prompt: [data.config.instructions, ...textPrompts]
+        prompt: [data.config.instructions, ...textPrompts, ...documentTexts]
           .filter(Boolean)
           .join("\n"),
         image: images.at(0)?.url,

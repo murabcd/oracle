@@ -1,4 +1,5 @@
 import type { Node } from "@xyflow/react";
+import type { DocumentNodeProps } from "@/components/nodes/document";
 import type { ImageNodeProps } from "@/components/nodes/image";
 import type { TextNodeProps } from "@/components/nodes/text";
 import type { VideoNodeProps } from "@/components/nodes/video";
@@ -17,6 +18,23 @@ export const getTextFromTextNodes = (nodes: Node[]) => {
 
   return [...sourceTexts, ...generatedTexts].filter(Boolean) as string[];
 };
+
+export const getTextFromDocumentNodes = (nodes: Node[]) =>
+  nodes
+    .filter((node) => node.type === "document")
+    .map((node) => node.data as unknown as DocumentNodeProps["data"])
+    .filter((data) => data.result?.generated === true)
+    .map((data) => data.result?.text)
+    .filter(Boolean) as string[];
+
+export const getDocumentsFromDocumentNodes = (nodes: Node[]) =>
+  nodes
+    .filter((node) => node.type === "document")
+    .map(
+      (node) =>
+        (node.data as unknown as DocumentNodeProps["data"]).config.source
+    )
+    .filter(Boolean) as NodeFile[];
 
 export const getDescriptionsFromImageNodes = (nodes: Node[]) => {
   const descriptions = nodes

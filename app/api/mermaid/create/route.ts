@@ -34,6 +34,21 @@ export const POST = async (request: Request) => {
   }
 
   if (
+    typeof body?.documents !== "undefined" &&
+    (!Array.isArray(body.documents) ||
+      body.documents.some(
+        (document: { url?: unknown; type?: unknown }) =>
+          typeof document?.url !== "string" ||
+          typeof document?.type !== "string"
+      ))
+  ) {
+    return Response.json(
+      { error: "Documents must be an array of typed URLs" },
+      { status: 400 }
+    );
+  }
+
+  if (
     typeof body?.videos !== "undefined" &&
     (!Array.isArray(body.videos) ||
       body.videos.some(

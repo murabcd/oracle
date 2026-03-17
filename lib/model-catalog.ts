@@ -130,6 +130,7 @@ export const videoModels = {
 } satisfies Record<string, OracleModel>;
 
 export const descriptionModelId = "gpt-5-nano";
+export const documentExtractionModelId = "gpt-4.1";
 
 export const filterModelsByVideoInput = (
   models: Record<string, OracleModel>,

@@ -28,7 +28,11 @@ import {
   patchNodeConfig,
   replaceNodeResult,
 } from "@/lib/node-data";
-import { getImagesFromImageNodes, getTextFromTextNodes } from "@/lib/xyflow";
+import {
+  getImagesFromImageNodes,
+  getTextFromDocumentNodes,
+  getTextFromTextNodes,
+} from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
 import type { ImageNodeProps } from ".";
@@ -75,11 +79,19 @@ export const ImageTransform = ({
 
     const incomers = getIncomers({ id }, getNodes(), getEdges());
     const textNodes = getTextFromTextNodes(incomers);
+    const documentTexts = getTextFromDocumentNodes(incomers);
     const imageNodes = getImagesFromImageNodes(incomers);
     const hasInstructions = Boolean(data.config.instructions?.trim().length);
 
     try {
-      if (!(textNodes.length || imageNodes.length || hasInstructions)) {
+      if (
+        !(
+          textNodes.length ||
+          documentTexts.length ||
+          imageNodes.length ||
+          hasInstructions
+        )
+      ) {
         throw new Error("No input provided");
       }
 
@@ -93,7 +105,7 @@ export const ImageTransform = ({
             modelId,
           })
         : await generateImageRequest({
-            prompt: textNodes.join("\n"),
+            prompt: [...textNodes, ...documentTexts].join("\n"),
             modelId,
             instructions: data.config.instructions,
           });
