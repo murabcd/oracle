@@ -81,7 +81,7 @@ export default function Image() {
             letterSpacing: "-0.03em",
           }}
         >
-          Visual AI Playground
+          Visual Product Workspace
         </div>
         <div
           style={{
@@ -111,7 +111,8 @@ export default function Image() {
               letterSpacing: "-0.04em",
             }}
           >
-            Build node-based text, image, and reasoning workflows.
+            Map research, connect ideas, and turn product thinking into clear
+            artifacts.
           </div>
         </div>
       </div>

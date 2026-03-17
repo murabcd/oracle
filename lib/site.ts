@@ -17,18 +17,18 @@ const siteUrl =
 export const siteConfig = {
   name: "Oracle",
   description:
-    "Oracle is a visual AI playground for building node-based text, image, and reasoning workflows.",
+    "Oracle is a visual thinking and synthesis workspace for product work. Turn messy inputs into connected insights, decisions, and artifacts on a shared canvas.",
   url: siteUrl,
   ogImage: "/opengraph-image",
   ogImageAlt:
-    "Oracle visual AI workflow canvas with connected nodes and reasoning output.",
+    "Oracle visual thinking canvas for product research, synthesis, and artifact creation.",
   creator: "murabcd",
   keywords: [
     "Oracle",
-    "AI workflow builder",
-    "visual AI playground",
-    "Next.js",
-    "OpenAI",
-    "node-based editor",
+    "product thinking workspace",
+    "product synthesis canvas",
+    "research synthesis",
+    "AI canvas for product managers",
+    "visual workspace for product work",
   ],
 } as const;

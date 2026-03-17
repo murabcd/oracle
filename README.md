@@ -1,10 +1,10 @@
 <a href="https://oracle-oss.vercel.app">
-  <img alt="Open-source Visual AI Workflow Built With Next.js and AI SDK." src="./public/preview/oracle.png">
+  <img alt="Open-source visual thinking and synthesis workspace for product work." src="./public/preview/oracle.png">
   <h1 align="center">Oracle</h1>
 </a>
 
 <p align="center">
-  Open-source Visual AI Workflow Built With Next.js and AI SDK.
+  Open-source visual thinking and synthesis workspace for product work.
 </p>
 
 <p align="center">
@@ -17,6 +17,12 @@
 
 ## Features
 
+- Canvas-first workspace for product thinking
+  - Collect notes, links, screenshots, and references in one visible place
+  - Connect evidence to insights, decisions, and artifacts instead of losing context in chat
+- Product synthesis and artifact creation
+  - Turn messy inputs into summaries, briefs, interfaces, diagrams, and other product outputs
+  - Branch ideas visually and keep intermediate reasoning on the canvas
 - [Next.js](https://nextjs.org) App Router
   - Advanced routing for seamless navigation and performance
   - React Server Components (RSCs) for server-side rendering and performance improvements
@@ -35,7 +41,7 @@ This app ships with [OpenAI](https://openai.com/) provider as the default. Howev
 
 You can deploy your own version of the Oracle to Vercel with one click:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmurabcd%2Foracle&env=NEXT_PUBLIC_APP_UR,OPENAI_API_KEY,GOOGLE_GENERATIVE_AI_API_KEY,BLOB_READ_WRITE_TOKEN&envDescription=Add%20the%20API%20keys%20and%20Blob%20token%20required%20for%20Oracle%20text%2C%20image%2C%20and%20video%20generation.&envLink=https%3A%2F%2Fgithub.com%2Fmurabcd%2Foracle%2Fblob%2Fmain%2F.env.example&demo-title=Oracle&demo-description=An%20open-source%20visual%20AI%20playground%20for%20text%2C%20image%2C%20and%20video%20workflows.&demo-url=https%3A%2F%2Foracle-oss.vercel.app)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmurabcd%2Foracle&env=NEXT_PUBLIC_APP_UR,OPENAI_API_KEY,GOOGLE_GENERATIVE_AI_API_KEY,BLOB_READ_WRITE_TOKEN&envDescription=Add%20the%20API%20keys%20and%20Blob%20token%20required%20for%20Oracle%20text%2C%20image%2C%20and%20video%20generation.&envLink=https%3A%2F%2Fgithub.com%2Fmurabcd%2Foracle%2Fblob%2Fmain%2F.env.example&demo-title=Oracle&demo-description=An%20open-source%20visual%20thinking%20and%20synthesis%20workspace%20for%20product%20work.&demo-url=https%3A%2F%2Foracle-oss.vercel.app)
 
 ## Running locally
 
