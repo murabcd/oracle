@@ -53,6 +53,11 @@ export const generateChart = async (input: GenerateChartInput) => {
         role: "user",
         content: [
           { type: "text", text: buildPrompt(input) },
+          ...(input.documents ?? []).map((document) => ({
+            type: "file" as const,
+            mediaType: document.type,
+            data: new URL(document.url),
+          })),
           ...(input.videos ?? []).map((video) => ({
             type: "file" as const,
             mediaType: video.type,

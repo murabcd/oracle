@@ -49,6 +49,7 @@ import {
   buildTextNodeExecutionInput,
   getTextResultFromMessage,
 } from "@/lib/nodes/text-execution";
+import { hasVideoLikeInput } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ReasoningTunnel } from "@/tunnels/reasoning";
 import { ModelSelector } from "../model-selector";
@@ -325,14 +326,9 @@ export const TextTransform = ({
   const { models } = useModels();
   const hasVideoInput = useMemo(
     () =>
-      incomingConnections.some((connection) => {
-        const sourceNode = getNodes().find(
-          (node) => node.id === connection.source
-        );
-
-        return sourceNode?.type === "video";
-      }),
-    [getNodes, incomingConnections]
+      incomingConnections.length > 0 &&
+      hasVideoLikeInput(getIncomers({ id }, getNodes(), getEdges())),
+    [getEdges, getNodes, id, incomingConnections]
   );
   const availableModels = useMemo(
     () =>

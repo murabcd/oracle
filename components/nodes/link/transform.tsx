@@ -1,14 +1,5 @@
-"use client";
-
 import { getIncomers, useNodeConnections, useReactFlow } from "@xyflow/react";
-import {
-  CopyIcon,
-  DownloadIcon,
-  Loader2Icon,
-  PlayIcon,
-  RotateCcwIcon,
-} from "lucide-react";
-import { useTheme } from "next-themes";
+import { CopyIcon, Loader2Icon, PlayIcon, RotateCcwIcon } from "lucide-react";
 import {
   type ChangeEventHandler,
   type ComponentProps,
@@ -22,10 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useNodeGenerateHotkeys } from "@/hooks/use-node-generate-hotkeys";
 import { handleError } from "@/lib/error/handle";
-import {
-  downloadMermaidSvg,
-  generateMermaidRequest,
-} from "@/lib/mermaid/client";
+import { generateLinkRequest } from "@/lib/link/client";
 import { filterModelsByVideoInput } from "@/lib/model-catalog";
 import {
   markNodeError,
@@ -41,13 +29,14 @@ import {
   getTextFromTextNodes,
   getVideosFromVideoNodes,
   hasVideoLikeInput,
+  isVideoLikeUrl,
 } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
-import type { MermaidNodeProps } from ".";
-import { MermaidPreview } from "./view";
+import type { LinkNodeProps } from ".";
+import { LinkPreview } from "./preview";
 
-type MermaidTransformProps = MermaidNodeProps & {
+type LinkTransformProps = LinkNodeProps & {
   title: string;
 };
 
@@ -89,7 +78,7 @@ const getSelectedModelId = ({
   return getDefaultModel(availableModels);
 };
 
-const buildPromptContent = ({
+const buildPrompt = ({
   documentTexts,
   imageDescriptions,
   linkTexts,
@@ -121,25 +110,26 @@ const buildPromptContent = ({
   return content.join("\n");
 };
 
-export const MermaidTransform = ({
+export const LinkTransform = ({
   data,
   id,
   type,
   title,
-}: MermaidTransformProps) => {
+}: LinkTransformProps) => {
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
   const incomingConnections = useNodeConnections({
     id,
     handleType: "target",
   });
-  const { resolvedTheme } = useTheme();
   const { models } = useModels();
   const [loading, setLoading] = useState(false);
+  const currentUrl = data.result?.url ?? data.config.url;
   const hasVideoInput = useMemo(
     () =>
-      incomingConnections.length > 0 &&
-      hasVideoLikeInput(getIncomers({ id }, getNodes(), getEdges())),
-    [getEdges, getNodes, id, incomingConnections]
+      isVideoLikeUrl(currentUrl) ||
+      (incomingConnections.length > 0 &&
+        hasVideoLikeInput(getIncomers({ id }, getNodes(), getEdges()))),
+    [currentUrl, getEdges, getNodes, id, incomingConnections]
   );
   const availableModels = useMemo(
     () => filterModelsByVideoInput(models, hasVideoInput),
@@ -150,19 +140,6 @@ export const MermaidTransform = ({
     availableModels,
     model: data.config.model,
   });
-  const previewSource = data.result?.source ?? data.config.source;
-  const getGenerationInputs = useCallback(() => {
-    const incomers = getIncomers({ id }, getNodes(), getEdges());
-
-    return {
-      documentTexts: getTextFromDocumentNodes(incomers),
-      documents: getDocumentsFromDocumentNodes(incomers),
-      imageDescriptions: getDescriptionsFromImageNodes(incomers),
-      linkTexts: getTextFromLinkNodes(incomers),
-      textPrompts: getTextFromTextNodes(incomers),
-      videos: getVideosFromVideoNodes(incomers),
-    };
-  }, [getEdges, getNodes, id]);
 
   const handleGenerate = useCallback(async () => {
     if (loading) {
@@ -170,22 +147,28 @@ export const MermaidTransform = ({
     }
 
     if (!hasAvailableModels) {
-      handleError("Error generating diagram", "No compatible models found");
+      handleError("Error generating source", "No compatible models found");
       return;
     }
 
-    const generationInputs = getGenerationInputs();
-    const hasPromptInput =
-      Boolean(generationInputs.documents.length) ||
-      Boolean(generationInputs.documentTexts.length) ||
-      Boolean(generationInputs.imageDescriptions.length) ||
-      Boolean(generationInputs.linkTexts.length) ||
-      Boolean(generationInputs.textPrompts.length) ||
-      Boolean(generationInputs.videos.length) ||
-      Boolean(data.config.instructions);
+    const incomers = getIncomers({ id }, getNodes(), getEdges());
+    const textPrompts = getTextFromTextNodes(incomers);
+    const documentTexts = getTextFromDocumentNodes(incomers);
+    const linkTexts = getTextFromLinkNodes(incomers);
+    const documents = getDocumentsFromDocumentNodes(incomers);
+    const imageDescriptions = getDescriptionsFromImageNodes(incomers);
+    const videos = getVideosFromVideoNodes(incomers);
+    const prompt = buildPrompt({
+      documentTexts,
+      imageDescriptions,
+      linkTexts,
+      textPrompts,
+    });
 
-    if (!hasPromptInput) {
-      handleError("Error generating diagram", "No prompts found");
+    if (
+      !(prompt || documents.length || videos.length || data.config.instructions)
+    ) {
+      handleError("Error generating source", "No prompts found");
       return;
     }
 
@@ -193,41 +176,52 @@ export const MermaidTransform = ({
       setLoading(true);
       updateNodeData(id, markNodeRunning(data));
 
-      const response = await generateMermaidRequest({
-        documents: generationInputs.documents,
-        prompt: buildPromptContent(generationInputs),
+      const response = await generateLinkRequest({
+        documents,
+        prompt,
         modelId,
         instructions: data.config.instructions,
-        startingSource: data.result?.source ?? data.config.source,
-        videos: generationInputs.videos,
+        startingUrl: data.result?.url ?? data.config.url,
+        videos,
       });
 
-      updateNodeData(
-        id,
-        replaceNodeResult(data, {
-          output: {
-            text: response.source,
-          },
-          source: response.source,
-        })
-      );
+      if ("error" in response) {
+        throw new Error(response.error);
+      }
 
-      toast.success("Diagram generated");
+      updateNodeData(id, {
+        ...replaceNodeResult(data, {
+          ...response,
+          output: {
+            json: response,
+            text: [response.title, response.description, response.url]
+              .filter(Boolean)
+              .join("\n"),
+          },
+        }),
+        config: {
+          ...data.config,
+          url: response.url,
+        },
+      });
+
+      toast.success("Source generated");
     } catch (error) {
       updateNodeData(
         id,
         markNodeError(
           data,
-          error instanceof Error ? error.message : "Failed to generate diagram"
+          error instanceof Error ? error.message : "Failed to generate source"
         )
       );
-      handleError("Error generating diagram", error);
+      handleError("Error generating source", error);
     } finally {
       setLoading(false);
     }
   }, [
     data,
-    getGenerationInputs,
+    getEdges,
+    getNodes,
     hasAvailableModels,
     id,
     loading,
@@ -236,27 +230,13 @@ export const MermaidTransform = ({
   ]);
 
   const handleCopy = useCallback(() => {
-    const value = data.result?.source ?? data.config.source;
-
-    if (!value) {
+    if (!data.result?.url) {
       return;
     }
 
-    navigator.clipboard.writeText(value);
-    toast.success("Mermaid copied");
-  }, [data.config.source, data.result?.source]);
-
-  const handleDownload = useCallback(async () => {
-    try {
-      await downloadMermaidSvg({
-        id,
-        resolvedTheme,
-        source: previewSource ?? "",
-      });
-    } catch (error) {
-      handleError("Error downloading Mermaid", error);
-    }
-  }, [id, previewSource, resolvedTheme]);
+    navigator.clipboard.writeText(data.result.url);
+    toast.success("Source copied");
+  }, [data.result?.url]);
 
   const handleInstructionsChange: ChangeEventHandler<HTMLTextAreaElement> = (
     event
@@ -319,7 +299,7 @@ export const MermaidTransform = ({
           }
         : {
             id: `generate-${id}`,
-            tooltip: data.result?.source ? "Regenerate" : "Generate",
+            tooltip: data.result?.url ? "Regenerate" : "Generate",
             children: (
               <Button
                 className="rounded-full"
@@ -327,7 +307,7 @@ export const MermaidTransform = ({
                 onClick={handleGenerate}
                 size="icon"
               >
-                {data.result?.source ? (
+                {data.result?.url ? (
                   <RotateCcwIcon size={12} />
                 ) : (
                   <PlayIcon size={12} />
@@ -337,10 +317,10 @@ export const MermaidTransform = ({
           }
     );
 
-    if (data.result?.source || data.config.source) {
+    if (data.result?.url) {
       items.push({
         id: `copy-${id}`,
-        tooltip: "Copy Mermaid",
+        tooltip: "Copy source",
         children: (
           <Button
             className="rounded-full"
@@ -352,33 +332,18 @@ export const MermaidTransform = ({
           </Button>
         ),
       });
-      items.push({
-        id: `download-${id}`,
-        tooltip: "Download SVG",
-        children: (
-          <Button
-            className="rounded-full"
-            onClick={handleDownload}
-            size="icon"
-            variant="ghost"
-          >
-            <DownloadIcon size={12} />
-          </Button>
-        ),
-      });
     }
 
     return items;
   }, [
+    availableModels,
     data,
     handleCopy,
-    handleDownload,
     handleGenerate,
+    hasAvailableModels,
     id,
     loading,
     modelId,
-    availableModels,
-    hasAvailableModels,
     updateNodeData,
   ]);
 
@@ -392,15 +357,7 @@ export const MermaidTransform = ({
       toolbar={toolbar}
       type={type}
     >
-      <MermaidPreview
-        emptyContent={
-          <p className="text-muted-foreground text-sm">
-            Press <PlayIcon className="inline -translate-y-px" size={12} /> to
-            generate mermaid.
-          </p>
-        }
-        source={previewSource ?? ""}
-      />
+      <LinkPreview result={data.result} />
       <Textarea
         className="shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
         onChange={handleInstructionsChange}

@@ -31,6 +31,7 @@ import {
 import {
   getImagesFromImageNodes,
   getTextFromDocumentNodes,
+  getTextFromLinkNodes,
   getTextFromTextNodes,
 } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
@@ -80,6 +81,7 @@ export const ImageTransform = ({
     const incomers = getIncomers({ id }, getNodes(), getEdges());
     const textNodes = getTextFromTextNodes(incomers);
     const documentTexts = getTextFromDocumentNodes(incomers);
+    const linkTexts = getTextFromLinkNodes(incomers);
     const imageNodes = getImagesFromImageNodes(incomers);
     const hasInstructions = Boolean(data.config.instructions?.trim().length);
 
@@ -88,6 +90,7 @@ export const ImageTransform = ({
         !(
           textNodes.length ||
           documentTexts.length ||
+          linkTexts.length ||
           imageNodes.length ||
           hasInstructions
         )
@@ -105,7 +108,7 @@ export const ImageTransform = ({
             modelId,
           })
         : await generateImageRequest({
-            prompt: [...textNodes, ...documentTexts].join("\n"),
+            prompt: [...textNodes, ...documentTexts, ...linkTexts].join("\n"),
             modelId,
             instructions: data.config.instructions,
           });

@@ -6,6 +6,7 @@ import {
   getDocumentsFromDocumentNodes,
   getImagesFromImageNodes,
   getTextFromDocumentNodes,
+  getTextFromLinkNodes,
   getTextFromTextNodes,
   getVideosFromVideoNodes,
 } from "@/lib/xyflow";
@@ -24,6 +25,7 @@ export const buildTextNodeExecutionInput = ({
 }): TextNodeExecutionInput => {
   const textPrompts = getTextFromTextNodes(incomers);
   const documentTexts = getTextFromDocumentNodes(incomers);
+  const linkTexts = getTextFromLinkNodes(incomers);
   const documents = getDocumentsFromDocumentNodes(incomers);
   const images = getImagesFromImageNodes(incomers);
   const imageDescriptions = getDescriptionsFromImageNodes(incomers);
@@ -33,6 +35,7 @@ export const buildTextNodeExecutionInput = ({
     !(
       textPrompts.length ||
       documentTexts.length ||
+      linkTexts.length ||
       imageDescriptions.length ||
       images.length ||
       documents.length ||
@@ -55,6 +58,10 @@ export const buildTextNodeExecutionInput = ({
 
   if (documentTexts.length) {
     content.push("--- Document Text ---", ...documentTexts);
+  }
+
+  if (linkTexts.length) {
+    content.push("--- Link Context ---", ...linkTexts);
   }
 
   if (imageDescriptions.length) {

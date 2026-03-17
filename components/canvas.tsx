@@ -22,6 +22,7 @@ import { useCallback, useEffect, useReducer } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useDebouncedCallback } from "use-debounce";
 import { loadCanvas, saveCanvas } from "@/lib/canvas-storage";
+import { normalizeLinkUrl } from "@/lib/link/client";
 import { createNodeData, initializeNodeData } from "@/lib/node-data";
 import {
   applyDefaultNodeWidth,
@@ -84,6 +85,13 @@ const withNodeDefaults = (node: Node, fallbackTimestamp: string): Node => {
     data: initializeNodeData(node.data, fallbackTimestamp),
   });
 };
+
+const isEditableTarget = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  (target.isContentEditable ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement);
 
 const canvasReducer = (
   state: CanvasState,
@@ -434,7 +442,7 @@ const useCanvasController = (props: ReactFlowProps) => {
     }
   }, [getNodes, setCopiedNodes]);
 
-  const handlePaste = useCallback(() => {
+  const duplicateCopiedNodes = useCallback(() => {
     if (copiedNodes.length === 0) {
       return;
     }
@@ -459,6 +467,61 @@ const useCanvasController = (props: ReactFlowProps) => {
       ];
     });
   }, [copiedNodes, setNodes]);
+
+  const pasteLinkFromText = useCallback(
+    (clipboardText: string) => {
+      const normalizedUrl = normalizeLinkUrl(clipboardText);
+
+      if (!normalizedUrl) {
+        return false;
+      }
+
+      const viewport = toObject().viewport;
+      const centerX =
+        -viewport.x / viewport.zoom + window.innerWidth / 2 / viewport.zoom;
+      const centerY =
+        -viewport.y / viewport.zoom + window.innerHeight / 2 / viewport.zoom;
+
+      addNode("link", {
+        position: { x: centerX, y: centerY },
+        data: {
+          config: {
+            url: normalizedUrl,
+          },
+        },
+      });
+
+      return true;
+    },
+    [addNode, toObject]
+  );
+
+  useEffect(() => {
+    const handleWindowPaste = (event: ClipboardEvent) => {
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+
+      const clipboardText = event.clipboardData?.getData("text") ?? "";
+      const didPasteLink = pasteLinkFromText(clipboardText);
+
+      if (!didPasteLink && copiedNodes.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (!didPasteLink) {
+        duplicateCopiedNodes();
+      }
+    };
+
+    window.addEventListener("paste", handleWindowPaste);
+
+    return () => {
+      window.removeEventListener("paste", handleWindowPaste);
+    };
+  }, [copiedNodes.length, duplicateCopiedNodes, pasteLinkFromText]);
 
   const handleDuplicateAll = useCallback(() => {
     const selected = getNodes().filter((node) => node.selected);
@@ -490,11 +553,6 @@ const useCanvasController = (props: ReactFlowProps) => {
   });
 
   useHotkeys("meta+c", handleCopy, {
-    enableOnContentEditable: false,
-    preventDefault: true,
-  });
-
-  useHotkeys("meta+v", handlePaste, {
     enableOnContentEditable: false,
     preventDefault: true,
   });

@@ -1,6 +1,10 @@
 import type { JsonRenderSpec } from "./catalog";
 
 export interface GenerateJsonRenderInput {
+  documents?: {
+    url: string;
+    type: string;
+  }[];
   prompt: string;
   modelId: string;
   instructions?: string;

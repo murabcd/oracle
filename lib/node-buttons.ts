@@ -2,6 +2,7 @@ import {
   BarChart3Icon,
   FileTextIcon,
   FilmIcon,
+  GlobeIcon,
   ImageIcon,
   PaintbrushIcon,
   TextIcon,
@@ -23,6 +24,11 @@ export const nodeButtons = [
     id: "document",
     label: "Document",
     icon: FileTextIcon,
+  },
+  {
+    id: "link",
+    label: "Source",
+    icon: GlobeIcon,
   },
   {
     id: "image",

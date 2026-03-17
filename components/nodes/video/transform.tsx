@@ -24,6 +24,7 @@ import {
 import {
   getImagesFromImageNodes,
   getTextFromDocumentNodes,
+  getTextFromLinkNodes,
   getTextFromTextNodes,
 } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
@@ -220,6 +221,7 @@ export const VideoTransform = ({
       const incomers = getIncomers({ id }, getNodes(), getEdges());
       const textPrompts = getTextFromTextNodes(incomers);
       const documentTexts = getTextFromDocumentNodes(incomers);
+      const linkTexts = getTextFromLinkNodes(incomers);
       const images = getImagesFromImageNodes(incomers);
       const hasInstructions = Boolean(data.config.instructions?.trim().length);
 
@@ -227,6 +229,7 @@ export const VideoTransform = ({
         !(
           textPrompts.length ||
           documentTexts.length ||
+          linkTexts.length ||
           images.length ||
           hasInstructions
         )
@@ -239,7 +242,12 @@ export const VideoTransform = ({
 
       const response = await generateVideoRequest({
         modelId,
-        prompt: [data.config.instructions, ...textPrompts, ...documentTexts]
+        prompt: [
+          data.config.instructions,
+          ...textPrompts,
+          ...documentTexts,
+          ...linkTexts,
+        ]
           .filter(Boolean)
           .join("\n"),
         image: images.at(0)?.url,

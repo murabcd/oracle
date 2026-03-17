@@ -1,6 +1,10 @@
 import type { ChartSpec } from "./catalog";
 
 export interface GenerateChartInput {
+  documents?: {
+    url: string;
+    type: string;
+  }[];
   prompt: string;
   modelId: string;
   instructions?: string;

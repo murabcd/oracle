@@ -25,8 +25,10 @@ import {
   getDescriptionsFromImageNodes,
   getDocumentsFromDocumentNodes,
   getTextFromDocumentNodes,
+  getTextFromLinkNodes,
   getTextFromTextNodes,
   getVideosFromVideoNodes,
+  hasVideoLikeInput,
 } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
@@ -78,10 +80,12 @@ const getSelectedModelId = ({
 const buildContextPrompt = ({
   documentTexts,
   imageDescriptions,
+  linkTexts,
   textPrompts,
 }: {
   documentTexts: string[];
   imageDescriptions: string[];
+  linkTexts: string[];
   textPrompts: string[];
 }) => {
   const content: string[] = [];
@@ -92,6 +96,10 @@ const buildContextPrompt = ({
 
   if (documentTexts.length) {
     content.push("--- Document Context ---", ...documentTexts);
+  }
+
+  if (linkTexts.length) {
+    content.push("--- Link Context ---", ...linkTexts);
   }
 
   if (imageDescriptions.length) {
@@ -131,14 +139,9 @@ export const JsonRenderTransform = ({
   const [loading, setLoading] = useState(false);
   const hasVideoInput = useMemo(
     () =>
-      incomingConnections.some((connection) => {
-        const sourceNode = getNodes().find(
-          (node) => node.id === connection.source
-        );
-
-        return sourceNode?.type === "video";
-      }),
-    [getNodes, incomingConnections]
+      incomingConnections.length > 0 &&
+      hasVideoLikeInput(getIncomers({ id }, getNodes(), getEdges())),
+    [getEdges, getNodes, id, incomingConnections]
   );
   const availableModels = useMemo(
     () => filterModelsByVideoInput(models, hasVideoInput),
@@ -164,12 +167,14 @@ export const JsonRenderTransform = ({
     const incomers = getIncomers({ id }, getNodes(), getEdges());
     const textPrompts = getTextFromTextNodes(incomers);
     const documentTexts = getTextFromDocumentNodes(incomers);
+    const linkTexts = getTextFromLinkNodes(incomers);
     const documents = getDocumentsFromDocumentNodes(incomers);
     const imageDescriptions = getDescriptionsFromImageNodes(incomers);
     const videos = getVideosFromVideoNodes(incomers);
     const prompt = buildContextPrompt({
       documentTexts,
       imageDescriptions,
+      linkTexts,
       textPrompts,
     });
 

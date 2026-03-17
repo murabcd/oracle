@@ -1,4 +1,8 @@
 export interface GenerateMermaidInput {
+  documents?: {
+    url: string;
+    type: string;
+  }[];
   prompt: string;
   modelId: string;
   instructions?: string;

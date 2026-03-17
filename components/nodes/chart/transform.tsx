@@ -26,8 +26,10 @@ import {
   getDescriptionsFromImageNodes,
   getDocumentsFromDocumentNodes,
   getTextFromDocumentNodes,
+  getTextFromLinkNodes,
   getTextFromTextNodes,
   getVideosFromVideoNodes,
+  hasVideoLikeInput,
 } from "@/lib/xyflow";
 import { useModels } from "@/providers/models/client";
 import { ModelSelector } from "../model-selector";
@@ -76,6 +78,38 @@ const getSelectedModelId = ({
   return getDefaultModel(availableModels);
 };
 
+const buildPromptContent = ({
+  documentTexts,
+  imageDescriptions,
+  linkTexts,
+  textPrompts,
+}: {
+  documentTexts: string[];
+  imageDescriptions: string[];
+  linkTexts: string[];
+  textPrompts: string[];
+}) => {
+  const content: string[] = [];
+
+  if (textPrompts.length) {
+    content.push("--- Text Context ---", ...textPrompts);
+  }
+
+  if (documentTexts.length) {
+    content.push("--- Document Context ---", ...documentTexts);
+  }
+
+  if (linkTexts.length) {
+    content.push("--- Link Context ---", ...linkTexts);
+  }
+
+  if (imageDescriptions.length) {
+    content.push("--- Image Context ---", ...imageDescriptions);
+  }
+
+  return content.join("\n");
+};
+
 export const ChartTransform = ({
   data,
   id,
@@ -91,14 +125,9 @@ export const ChartTransform = ({
   const [loading, setLoading] = useState(false);
   const hasVideoInput = useMemo(
     () =>
-      incomingConnections.some((connection) => {
-        const sourceNode = getNodes().find(
-          (node) => node.id === connection.source
-        );
-
-        return sourceNode?.type === "video";
-      }),
-    [getNodes, incomingConnections]
+      incomingConnections.length > 0 &&
+      hasVideoLikeInput(getIncomers({ id }, getNodes(), getEdges())),
+    [getEdges, getNodes, id, incomingConnections]
   );
   const availableModels = useMemo(
     () => filterModelsByVideoInput(models, hasVideoInput),
@@ -114,6 +143,18 @@ export const ChartTransform = ({
     data.result?.json ??
     data.config.json ??
     (currentSpec ? serializeChartSpec(currentSpec) : undefined);
+  const getGenerationInputs = useCallback(() => {
+    const incomers = getIncomers({ id }, getNodes(), getEdges());
+
+    return {
+      documentTexts: getTextFromDocumentNodes(incomers),
+      documents: getDocumentsFromDocumentNodes(incomers),
+      imageDescriptions: getDescriptionsFromImageNodes(incomers),
+      linkTexts: getTextFromLinkNodes(incomers),
+      textPrompts: getTextFromTextNodes(incomers),
+      videos: getVideosFromVideoNodes(incomers),
+    };
+  }, [getEdges, getNodes, id]);
 
   const handleGenerate = useCallback(async () => {
     if (loading) {
@@ -125,40 +166,20 @@ export const ChartTransform = ({
       return;
     }
 
-    const incomers = getIncomers({ id }, getNodes(), getEdges());
-    const textPrompts = getTextFromTextNodes(incomers);
-    const documentTexts = getTextFromDocumentNodes(incomers);
-    const documents = getDocumentsFromDocumentNodes(incomers);
-    const imageDescriptions = getDescriptionsFromImageNodes(incomers);
-    const videos = getVideosFromVideoNodes(incomers);
+    const generationInputs = getGenerationInputs();
+    const hasPromptInput =
+      Boolean(generationInputs.documents.length) ||
+      Boolean(generationInputs.documentTexts.length) ||
+      Boolean(generationInputs.imageDescriptions.length) ||
+      Boolean(generationInputs.linkTexts.length) ||
+      Boolean(generationInputs.textPrompts.length) ||
+      Boolean(generationInputs.videos.length) ||
+      Boolean(data.config.instructions) ||
+      Boolean(currentSpec);
 
-    if (
-      !(
-        textPrompts.length ||
-        documentTexts.length ||
-        documents.length ||
-        imageDescriptions.length ||
-        videos.length ||
-        data.config.instructions ||
-        currentSpec
-      )
-    ) {
+    if (!hasPromptInput) {
       handleError("Error generating chart", "No prompts found");
       return;
-    }
-
-    const content: string[] = [];
-
-    if (textPrompts.length) {
-      content.push("--- Text Context ---", ...textPrompts);
-    }
-
-    if (documentTexts.length) {
-      content.push("--- Document Context ---", ...documentTexts);
-    }
-
-    if (imageDescriptions.length) {
-      content.push("--- Image Context ---", ...imageDescriptions);
     }
 
     try {
@@ -166,12 +187,12 @@ export const ChartTransform = ({
       updateNodeData(id, markNodeRunning(data));
 
       const response = await generateChartRequest({
-        documents,
-        prompt: content.join("\n"),
+        documents: generationInputs.documents,
+        prompt: buildPromptContent(generationInputs),
         modelId,
         instructions: data.config.instructions,
         startingSpec: currentSpec,
-        videos,
+        videos: generationInputs.videos,
       });
 
       updateNodeData(
@@ -202,8 +223,7 @@ export const ChartTransform = ({
   }, [
     currentSpec,
     data,
-    getEdges,
-    getNodes,
+    getGenerationInputs,
     hasAvailableModels,
     id,
     loading,
