@@ -2,7 +2,7 @@ import { ChartNode } from "./chart";
 import { DocumentNode } from "./document";
 import { DropNode } from "./drop";
 import { ImageNode } from "./image";
-import { JsonRenderNode } from "./json-render";
+import { JsonRenderNode } from "./interface";
 import { LinkNode } from "./link";
 import { MermaidNode } from "./mermaid";
 import { TextNode } from "./text";

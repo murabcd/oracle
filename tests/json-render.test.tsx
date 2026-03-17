@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { JsonRenderPreview } from "@/components/nodes/json-render/preview";
+import { JsonRenderPreview } from "@/components/nodes/interface/preview";
 import {
   parseJsonRenderSpec,
   serializeJsonRenderSpec,

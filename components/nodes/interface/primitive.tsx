@@ -47,7 +47,8 @@ export const JsonRenderPrimitive = ({
       ) : (
         <div className="flex min-h-72 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary/60 px-4 text-center">
           <p className="max-w-52 text-pretty text-muted-foreground text-sm">
-            Connect a text, document, image, or video node to generate UI here.
+            Connect a text, document, image, or video node to generate an
+            interface here.
           </p>
         </div>
       )}

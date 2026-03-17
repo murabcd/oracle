@@ -160,7 +160,7 @@ export const JsonRenderTransform = ({
     }
 
     if (!hasAvailableModels) {
-      handleError("Error generating UI", "No compatible models found");
+      handleError("Error generating interface", "No compatible models found");
       return;
     }
 
@@ -181,7 +181,7 @@ export const JsonRenderTransform = ({
     if (
       !(prompt || documents.length || videos.length || data.config.instructions)
     ) {
-      handleError("Error generating UI", "No prompts found");
+      handleError("Error generating interface", "No prompts found");
       return;
     }
 
@@ -233,7 +233,7 @@ export const JsonRenderTransform = ({
         })
       );
 
-      toast.success("UI generated");
+      toast.success("Interface generated");
     } catch (error) {
       updateNodeData(id, {
         result: data.result
@@ -247,10 +247,12 @@ export const JsonRenderTransform = ({
         id,
         markNodeError(
           data,
-          error instanceof Error ? error.message : "Failed to generate UI"
+          error instanceof Error
+            ? error.message
+            : "Failed to generate interface"
         )
       );
-      handleError("Error generating UI", error);
+      handleError("Error generating interface", error);
     } finally {
       setLoading(false);
     }
@@ -399,7 +401,7 @@ export const JsonRenderTransform = ({
         <div className="flex min-h-72 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary/60 px-4 text-center">
           <p className="max-w-56 text-pretty text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
-            generate UI.
+            generate an interface.
           </p>
         </div>
       )}
