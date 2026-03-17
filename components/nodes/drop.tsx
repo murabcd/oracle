@@ -92,6 +92,17 @@ export const DropNode = ({ data, id }: DropNodeProps) => {
   };
 
   useEffect(() => {
+    const focusSearchInput = () => {
+      const searchInput = ref.current?.querySelector("input");
+
+      if (!(searchInput instanceof HTMLInputElement)) {
+        return;
+      }
+
+      searchInput.focus();
+      searchInput.select();
+    };
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         // Delete the drop node when Escape is pressed
@@ -115,11 +126,16 @@ export const DropNode = ({ data, id }: DropNodeProps) => {
 
     window.addEventListener("keydown", handleKeyDown);
 
+    const focusFrame = window.requestAnimationFrame(focusSearchInput);
+    const focusTimeout = window.setTimeout(focusSearchInput, 60);
+
     setTimeout(() => {
       window.addEventListener("click", handleClick);
     }, 50);
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.clearTimeout(focusTimeout);
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("click", handleClick);
     };
@@ -129,8 +145,8 @@ export const DropNode = ({ data, id }: DropNodeProps) => {
     <div ref={ref}>
       <NodeLayout data={data} id={id} title="Add a new node" type="drop">
         <Command className="rounded-3xl bg-secondary/60">
-          <CommandInput placeholder="Type a command or search..." />
-          <CommandList>
+          <CommandInput autoFocus placeholder="Type a command or search..." />
+          <CommandList className="max-h-[min(50vh,28rem)] overflow-y-auto">
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup heading="Add node">
               {nodeButtons.map((button) => (
