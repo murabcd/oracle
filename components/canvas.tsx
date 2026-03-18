@@ -15,7 +15,13 @@ import {
   type ReactFlowProps,
   useReactFlow,
 } from "@xyflow/react";
-import { BoxSelectIcon, PlusIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CopyIcon,
+  PaletteIcon,
+  PlusIcon,
+  TrashIcon,
+} from "lucide-react";
 import { nanoid } from "nanoid";
 import type { MouseEvent, MouseEventHandler, SetStateAction } from "react";
 import { useCallback, useEffect, useReducer } from "react";
@@ -23,7 +29,12 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { useDebouncedCallback } from "use-debounce";
 import { loadCanvas, saveCanvas } from "@/lib/canvas-storage";
 import { normalizeLinkUrl } from "@/lib/link/client";
-import { createNodeData, initializeNodeData } from "@/lib/node-data";
+import { NODE_BORDER_COLORS } from "@/lib/node-colors";
+import {
+  createNodeData,
+  initializeNodeData,
+  patchNodeConfig,
+} from "@/lib/node-data";
 import {
   applyDefaultNodeWidth,
   getNodeStyleWithDefaultWidth,
@@ -40,6 +51,9 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "./ui/context-menu";
 
@@ -189,10 +203,12 @@ const useCanvasController = (props: ReactFlowProps) => {
     initialNodes,
   });
   const {
+    deleteElements,
     getEdges,
+    getNodes,
+    updateNodeData,
     toObject,
     screenToFlowPosition,
-    getNodes,
     getNode,
     updateNode,
   } = useReactFlow();
@@ -201,6 +217,13 @@ const useCanvasController = (props: ReactFlowProps) => {
     const { nodes: currentNodes, edges: currentEdges } = toObject();
     saveCanvas({ nodes: currentNodes, edges: currentEdges });
   }, 1000);
+
+  const saveState = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
+    saveCanvas({
+      edges: nextEdges,
+      nodes: nextNodes,
+    });
+  }, []);
 
   const handleNodesChange = useCallback<OnNodesChange>(
     (changes) => {
@@ -233,11 +256,14 @@ const useCanvasController = (props: ReactFlowProps) => {
         type: "animated",
         ...connection,
       };
-      setEdges((current) => current.concat(newEdge));
-      save();
+      setEdges((current) => {
+        const updated = current.concat(newEdge);
+        saveState(nodes, updated);
+        return updated;
+      });
       onConnect?.(connection);
     },
-    [save, onConnect, setEdges]
+    [nodes, onConnect, saveState, setEdges]
   );
 
   const addNode = useCallback(
@@ -275,12 +301,15 @@ const useCanvasController = (props: ReactFlowProps) => {
         ...nodeOptions,
       };
 
-      setNodes((current) => current.concat(newNode));
-      save();
+      setNodes((current) => {
+        const updated = current.concat(newNode);
+        saveState(updated, edges);
+        return updated;
+      });
 
       return newNode.id;
     },
-    [save, setNodes]
+    [edges, saveState, setNodes]
   );
 
   const duplicateNode = useCallback(
@@ -344,17 +373,19 @@ const useCanvasController = (props: ReactFlowProps) => {
           },
         });
 
-        setEdges((current) =>
-          current.concat({
+        setEdges((current) => {
+          const updated = current.concat({
             id: nanoid(),
             source: isSourceHandle ? sourceId : newNodeId,
             target: isSourceHandle ? newNodeId : sourceId,
             type: "temporary",
-          })
-        );
+          });
+          saveState(nodes, updated);
+          return updated;
+        });
       }
     },
-    [addNode, screenToFlowPosition, setEdges]
+    [addNode, nodes, saveState, screenToFlowPosition, setEdges]
   );
 
   const isValidConnection = useCallback<IsValidConnection>(
@@ -401,10 +432,19 @@ const useCanvasController = (props: ReactFlowProps) => {
   );
 
   const handleConnectStart = useCallback<OnConnectStart>(() => {
-    setNodes((current) => current.filter((node) => node.type !== "drop"));
-    setEdges((current) => current.filter((edge) => edge.type !== "temporary"));
-    save();
-  }, [save, setEdges, setNodes]);
+    let nextNodes = nodes;
+
+    setNodes((current) => {
+      nextNodes = current.filter((node) => node.type !== "drop");
+      return nextNodes;
+    });
+
+    setEdges((current) => {
+      const nextEdges = current.filter((edge) => edge.type !== "temporary");
+      saveState(nextNodes, nextEdges);
+      return nextEdges;
+    });
+  }, [nodes, saveState, setEdges, setNodes]);
 
   const addDropNode = useCallback<MouseEventHandler<HTMLDivElement>>(
     (event) => {
@@ -452,15 +492,18 @@ const useCanvasController = (props: ReactFlowProps) => {
         selected: true,
       }));
 
-      return [
+      const updated = [
         ...current.map((node) => ({
           ...node,
           selected: false,
         })),
         ...newNodes,
       ];
+
+      saveState(updated, edges);
+      return updated;
     });
-  }, [copiedNodes, setNodes]);
+  }, [copiedNodes, edges, saveState, setNodes]);
 
   const pasteLinkFromText = useCallback(
     (clipboardText: string) => {
@@ -528,13 +571,51 @@ const useCanvasController = (props: ReactFlowProps) => {
     }
   }, [getNodes, duplicateNode]);
 
+  const getSelectedActionNodes = useCallback(
+    () => getNodes().filter((node) => node.selected && node.type !== "drop"),
+    [getNodes]
+  );
+
+  const handleDeleteSelected = useCallback(() => {
+    const selected = getSelectedActionNodes();
+
+    if (!selected.length) {
+      return;
+    }
+
+    deleteElements({
+      nodes: selected.map((node) => ({ id: node.id })),
+    });
+  }, [deleteElements, getSelectedActionNodes]);
+
+  const handleSetBorderColor = useCallback(
+    (value: string) => {
+      for (const node of getSelectedActionNodes()) {
+        updateNodeData(
+          node.id,
+          patchNodeConfig(initializeNodeData(node.data), {
+            borderColor: value || undefined,
+          })
+        );
+      }
+    },
+    [getSelectedActionNodes, updateNodeData]
+  );
+
   const handleContextMenu = useCallback((event: MouseEvent) => {
-    if (
-      !(
-        event.target instanceof HTMLElement &&
-        event.target.classList.contains("react-flow__pane")
+    if (!(event.target instanceof HTMLElement)) {
+      return;
+    }
+
+    const isNodeTarget = Boolean(event.target.closest(".react-flow__node"));
+    const isPaneTarget = Boolean(event.target.closest(".react-flow__pane"));
+    const isSelectionTarget = Boolean(
+      event.target.closest(
+        ".react-flow__selection, .react-flow__selectionpane, .react-flow__nodesselection-rect"
       )
-    ) {
+    );
+
+    if (isNodeTarget || !(isPaneTarget || isSelectionTarget)) {
       event.preventDefault();
     }
   }, []);
@@ -563,13 +644,17 @@ const useCanvasController = (props: ReactFlowProps) => {
     handleConnectEnd,
     handleConnectStart,
     handleContextMenu,
+    handleDeleteSelected,
+    handleDuplicateAll,
     handleEdgesChange,
     handleNodesChange,
+    handleSetBorderColor,
     handleSelectAll,
     isValidConnection,
     loaded,
     nodes,
     restProps,
+    selectedNodes: getSelectedActionNodes(),
   };
 };
 
@@ -583,13 +668,17 @@ export const Canvas = ({ children, ...props }: ReactFlowProps) => {
     handleConnectEnd,
     handleConnectStart,
     handleContextMenu,
+    handleDeleteSelected,
+    handleDuplicateAll,
     handleEdgesChange,
     handleNodesChange,
+    handleSetBorderColor,
     handleSelectAll,
     isValidConnection,
     loaded,
     nodes,
     restProps,
+    selectedNodes,
   } = useCanvasController(props);
 
   if (!loaded) {
@@ -620,14 +709,68 @@ export const Canvas = ({ children, ...props }: ReactFlowProps) => {
             </CanvasComponent>
           </ContextMenuTrigger>
           <ContextMenuContent>
-            <ContextMenuItem onClick={addDropNode}>
-              <PlusIcon size={12} />
-              <span>Add a new node</span>
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleSelectAll}>
-              <BoxSelectIcon size={12} />
-              <span>Select all</span>
-            </ContextMenuItem>
+            {selectedNodes.length > 0 ? (
+              <>
+                <ContextMenuItem onClick={handleDuplicateAll}>
+                  <CopyIcon size={12} />
+                  <span>
+                    Duplicate {selectedNodes.length > 1 ? "selection" : "node"}
+                  </span>
+                </ContextMenuItem>
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger>
+                    <PaletteIcon size={12} />
+                    <span>Border color</span>
+                  </ContextMenuSubTrigger>
+                  <ContextMenuSubContent className="min-w-44">
+                    {NODE_BORDER_COLORS.map((color) => (
+                      <ContextMenuItem
+                        key={color.label}
+                        onClick={() => handleSetBorderColor(color.value)}
+                      >
+                        <span
+                          className="size-3 rounded-full border border-white/10"
+                          style={{
+                            backgroundColor: color.value || "transparent",
+                            boxShadow: color.value
+                              ? `inset 0 0 0 1px ${color.value}`
+                              : "inset 0 0 0 1px var(--border)",
+                          }}
+                        />
+                        <span>{color.label}</span>
+                        {selectedNodes.every(
+                          (node) =>
+                            (initializeNodeData(node.data).config.borderColor ??
+                              "") === color.value
+                        ) ? (
+                          <CheckIcon className="ml-auto" size={14} />
+                        ) : null}
+                      </ContextMenuItem>
+                    ))}
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+                <ContextMenuItem
+                  onClick={handleDeleteSelected}
+                  variant="destructive"
+                >
+                  <TrashIcon size={12} />
+                  <span>
+                    Delete {selectedNodes.length > 1 ? "selection" : "node"}
+                  </span>
+                </ContextMenuItem>
+              </>
+            ) : (
+              <>
+                <ContextMenuItem onClick={addDropNode}>
+                  <PlusIcon size={12} />
+                  <span>Add a new node</span>
+                </ContextMenuItem>
+                <ContextMenuItem onClick={handleSelectAll}>
+                  <span className="flex size-4 items-center justify-center rounded-[4px] border border-current/60 border-dashed" />
+                  <span>Select all</span>
+                </ContextMenuItem>
+              </>
+            )}
           </ContextMenuContent>
         </ContextMenu>
       </NodeDropzoneProvider>

@@ -1,5 +1,19 @@
-import { NodeResizer, useInternalNode, useReactFlow } from "@xyflow/react";
-import { CodeIcon, CopyIcon, EyeIcon, TrashIcon } from "lucide-react";
+import {
+  type Node as FlowNode,
+  NodeResizer,
+  type Position,
+  useInternalNode,
+  useReactFlow,
+} from "@xyflow/react";
+import {
+  CheckIcon,
+  CodeIcon,
+  CopyIcon,
+  EyeIcon,
+  PaletteIcon,
+  TrashIcon,
+} from "lucide-react";
+import type { CSSProperties } from "react";
 import { type ReactNode, useState } from "react";
 import {
   Node,
@@ -12,6 +26,9 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
@@ -21,7 +38,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { initializeNodeData, isNodeData, patchNodeMeta } from "@/lib/node-data";
+import { NODE_BORDER_COLORS } from "@/lib/node-colors";
+import {
+  initializeNodeData,
+  isNodeData,
+  patchNodeConfig,
+  patchNodeMeta,
+} from "@/lib/node-data";
 import { cn } from "@/lib/utils";
 import { useNodeOperations } from "@/providers/node-operations";
 import { NodeToolbar } from "./toolbar";
@@ -64,10 +87,25 @@ interface NodeLayoutProps {
     source?: boolean;
     target?: boolean;
   };
+  customHandles?: Array<{
+    id?: string;
+    position: Position;
+    style?: CSSProperties;
+    type: "source" | "target";
+  }>;
   className?: string;
   contentClassName?: string;
   bodyClassName?: string;
   indicator?: ReactNode;
+}
+
+interface NodeStatusMetadata {
+  borderColor: string;
+  createdAtTitle: string | null;
+  hasBeenUpdated: boolean;
+  statusLabel: "created" | "updated";
+  statusValue: string | null;
+  updatedAtTitle: string | null;
 }
 
 const formatUpdatedAt = (value: string) => {
@@ -323,6 +361,113 @@ const getDisplayFields = (value: Record<string, unknown>): DisplayFields => {
   return displayFields;
 };
 
+const getNodeStatusMetadata = (
+  data?: Record<string, unknown>
+): NodeStatusMetadata => {
+  const nodeData = data ? initializeNodeData(data) : null;
+  const borderColor =
+    typeof nodeData?.config.borderColor === "string"
+      ? nodeData.config.borderColor
+      : "";
+  const createdAt = nodeData?.meta.createdAt
+    ? formatHeaderTimestamp(nodeData.meta.createdAt)
+    : null;
+  const updatedAt = nodeData?.meta.updatedAt
+    ? formatUpdatedAt(nodeData.meta.updatedAt)
+    : null;
+  const rawCreatedAt = nodeData?.meta.createdAt ?? null;
+  const rawUpdatedAt = nodeData?.meta.updatedAt ?? null;
+  const hasBeenUpdated =
+    Boolean(rawCreatedAt) &&
+    Boolean(rawUpdatedAt) &&
+    rawCreatedAt !== rawUpdatedAt;
+
+  return {
+    borderColor,
+    createdAtTitle: rawCreatedAt
+      ? new Intl.DateTimeFormat("en-US", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date(rawCreatedAt))
+      : null,
+    hasBeenUpdated,
+    statusLabel: hasBeenUpdated ? "updated" : "created",
+    statusValue: hasBeenUpdated ? updatedAt : createdAt,
+    updatedAtTitle: rawUpdatedAt
+      ? new Intl.DateTimeFormat("en-US", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date(rawUpdatedAt))
+      : null,
+  };
+};
+
+const getActionTargetNodes = ({
+  currentNode,
+  nodes,
+}: {
+  currentNode?: FlowNode;
+  nodes: FlowNode[];
+}) => {
+  if (!currentNode) {
+    return [];
+  }
+
+  const selectedNodes = nodes.filter(
+    (node) => node.selected && node.type !== "drop"
+  );
+
+  if (currentNode.selected && selectedNodes.length > 1) {
+    return selectedNodes;
+  }
+
+  return currentNode.type === "drop" ? [] : [currentNode];
+};
+
+const focusNodes = ({
+  nodes,
+  setCenter,
+}: {
+  nodes: FlowNode[];
+  setCenter: ReturnType<typeof useReactFlow>["setCenter"];
+}) => {
+  if (!nodes.length) {
+    return;
+  }
+
+  const bounds = nodes.reduce(
+    (acc, node) => {
+      const width =
+        node.measured?.width ??
+        (typeof node.width === "number" ? node.width : 0);
+      const height =
+        node.measured?.height ??
+        (typeof node.height === "number" ? node.height : 0);
+
+      return {
+        bottom: Math.max(acc.bottom, node.position.y + height),
+        left: Math.min(acc.left, node.position.x),
+        right: Math.max(acc.right, node.position.x + width),
+        top: Math.min(acc.top, node.position.y),
+      };
+    },
+    {
+      bottom: Number.NEGATIVE_INFINITY,
+      left: Number.POSITIVE_INFINITY,
+      right: Number.NEGATIVE_INFINITY,
+      top: Number.POSITIVE_INFINITY,
+    }
+  );
+
+  setCenter(
+    (bounds.left + bounds.right) / 2,
+    (bounds.top + bounds.bottom) / 2,
+    {
+      duration: 1000,
+    }
+  );
+};
+
 const NodeDataSheet = ({
   id,
   open,
@@ -368,7 +513,7 @@ const NodeDataSheet = ({
                   className={cn(
                     "overflow-auto rounded-lg p-4 font-mono text-[11px] text-white",
                     field.variant === "text"
-                      ? "whitespace-pre-wrap break-words bg-zinc-950"
+                      ? "wrap-break-word whitespace-pre-wrap bg-zinc-950"
                       : "whitespace-pre bg-black"
                   )}
                 >
@@ -390,6 +535,7 @@ export const NodeLayout = ({
   data,
   toolbar,
   handles,
+  customHandles,
   title,
   className,
   contentClassName,
@@ -397,54 +543,40 @@ export const NodeLayout = ({
   indicator,
 }: NodeLayoutProps) => {
   const internalNode = useInternalNode(id);
-  const { deleteElements, setCenter, getNode, updateNode, updateNodeData } =
-    useReactFlow();
+  const {
+    deleteElements,
+    setCenter,
+    getNode,
+    getNodes,
+    updateNode,
+    updateNodeData,
+  } = useReactFlow();
   const { duplicateNode } = useNodeOperations();
   const [showData, setShowData] = useState(false);
-  const nodeData = data ? initializeNodeData(data) : null;
-  const createdAt = nodeData?.meta.createdAt
-    ? formatHeaderTimestamp(nodeData.meta.createdAt)
-    : null;
-  const updatedAt = nodeData?.meta.updatedAt
-    ? formatUpdatedAt(nodeData.meta.updatedAt)
-    : null;
-  const hasBeenUpdated =
-    Boolean(nodeData?.meta.createdAt) &&
-    Boolean(nodeData?.meta.updatedAt) &&
-    nodeData?.meta.createdAt !== nodeData?.meta.updatedAt;
-  const statusLabel = hasBeenUpdated ? "updated" : "created";
-  const statusValue = hasBeenUpdated ? updatedAt : createdAt;
-  const createdAtTitle = nodeData?.meta.createdAt
-    ? new Intl.DateTimeFormat("en-US", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(new Date(nodeData.meta.createdAt))
-    : null;
-  const updatedAtTitle = nodeData?.meta.updatedAt
-    ? new Intl.DateTimeFormat("en-US", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(new Date(nodeData.meta.updatedAt))
-    : null;
+  const {
+    borderColor,
+    createdAtTitle,
+    hasBeenUpdated,
+    statusLabel,
+    statusValue,
+    updatedAtTitle,
+  } = getNodeStatusMetadata(data);
+  const resolveActionTargetNodes = () =>
+    getActionTargetNodes({
+      currentNode: getNode(id),
+      nodes: getNodes(),
+    });
+
   const handleFocus = () => {
-    const node = getNode(id);
-
-    if (!node) {
-      return;
-    }
-
-    const width = node.measured?.width ?? 0;
-    const centerX = node.position.x + width / 2;
-    const centerY = node.position.y;
-
-    setCenter(centerX, centerY, {
-      duration: 1000,
+    focusNodes({
+      nodes: resolveActionTargetNodes(),
+      setCenter,
     });
   };
 
   const handleDelete = () => {
     deleteElements({
-      nodes: [{ id }],
+      nodes: resolveActionTargetNodes().map((node) => ({ id: node.id })),
     });
   };
 
@@ -492,6 +624,35 @@ export const NodeLayout = ({
     }
   };
 
+  const handleBorderColorChange = (value: string) => {
+    const targetNodes = resolveActionTargetNodes();
+
+    if (!targetNodes.length) {
+      return;
+    }
+
+    for (const targetNode of targetNodes) {
+      updateNodeData(
+        targetNode.id,
+        patchNodeConfig(initializeNodeData(targetNode.data), {
+          borderColor: value || undefined,
+        })
+      );
+    }
+  };
+
+  const handleDuplicate = () => {
+    const targetNodes = resolveActionTargetNodes();
+
+    if (!targetNodes.length) {
+      return;
+    }
+
+    for (const targetNode of targetNodes) {
+      duplicateNode(targetNode.id);
+    }
+  };
+
   return (
     <>
       {type !== "drop" && Boolean(toolbar?.length) && (
@@ -504,6 +665,7 @@ export const NodeLayout = ({
               className,
               "rounded-[28px] bg-transparent shadow-none"
             )}
+            customHandles={customHandles}
             handles={{
               target: handles?.target ?? true,
               source: handles?.source ?? true,
@@ -557,6 +719,13 @@ export const NodeLayout = ({
                 "relative rounded-[28px] bg-card p-2 ring-1 ring-border",
                 contentClassName
               )}
+              style={
+                borderColor
+                  ? {
+                      boxShadow: `inset 0 0 0 1px ${borderColor}, 0 0 0 1px ${borderColor}33`,
+                    }
+                  : undefined
+              }
             >
               {indicator}
               <div
@@ -571,7 +740,7 @@ export const NodeLayout = ({
           </Node>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem onClick={() => duplicateNode(id)}>
+          <ContextMenuItem onClick={handleDuplicate}>
             <CopyIcon size={12} />
             <span>Duplicate</span>
           </ContextMenuItem>
@@ -579,6 +748,36 @@ export const NodeLayout = ({
             <EyeIcon size={12} />
             <span>Focus</span>
           </ContextMenuItem>
+          {type !== "drop" && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                <PaletteIcon size={12} />
+                <span>Border color</span>
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="min-w-44">
+                {NODE_BORDER_COLORS.map((color) => (
+                  <ContextMenuItem
+                    key={color.label}
+                    onClick={() => handleBorderColorChange(color.value)}
+                  >
+                    <span
+                      className="size-3 rounded-full border border-white/10"
+                      style={{
+                        backgroundColor: color.value || "transparent",
+                        boxShadow: color.value
+                          ? `inset 0 0 0 1px ${color.value}`
+                          : "inset 0 0 0 1px var(--border)",
+                      }}
+                    />
+                    <span>{color.label}</span>
+                    {borderColor === color.value ? (
+                      <CheckIcon className="ml-auto" size={14} />
+                    ) : null}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
           {process.env.NODE_ENV === "development" && (
             <>
               <ContextMenuItem onClick={handleShowData}>

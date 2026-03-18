@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, CSSProperties } from "react";
 
 import {
   Card,
@@ -13,13 +13,24 @@ import { cn } from "@/lib/utils";
 import { Handle, Position } from "@xyflow/react";
 
 type NodeProps = ComponentProps<typeof Card> & {
+  customHandles?: Array<{
+    id?: string;
+    position: Position;
+    style?: CSSProperties;
+    type: "source" | "target";
+  }>;
   handles: {
     target: boolean;
     source: boolean;
   };
 };
 
-export const Node = ({ handles, className, ...props }: NodeProps) => (
+export const Node = ({
+  customHandles,
+  handles,
+  className,
+  ...props
+}: NodeProps) => (
   <Card
     className={cn(
       "node-container relative h-full w-full gap-0 rounded-md p-0",
@@ -29,6 +40,15 @@ export const Node = ({ handles, className, ...props }: NodeProps) => (
   >
     {handles.target && <Handle position={Position.Left} type="target" />}
     {handles.source && <Handle position={Position.Right} type="source" />}
+    {customHandles?.map((handle, index) => (
+      <Handle
+        id={handle.id}
+        key={`${handle.type}-${handle.position}-${handle.id ?? index}`}
+        position={handle.position}
+        style={handle.style}
+        type={handle.type}
+      />
+    ))}
     {props.children}
   </Card>
 );
