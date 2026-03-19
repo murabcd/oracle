@@ -4,12 +4,18 @@ import {
   FilmIcon,
   GlobeIcon,
   ImageIcon,
+  MessageSquarePlusIcon,
   PaintbrushIcon,
   TextIcon,
   WorkflowIcon,
 } from "lucide-react";
 
 export const nodeButtons = [
+  {
+    id: "note",
+    label: "Note",
+    icon: MessageSquarePlusIcon,
+  },
   {
     id: "text",
     label: "Text",

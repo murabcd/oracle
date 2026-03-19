@@ -4,6 +4,15 @@ import type { CSSProperties } from "react";
 export const DEFAULT_NODE_WIDTH = 384;
 export const DEFAULT_NODE_HEIGHT = 320;
 
+const NODE_DEFAULT_SIZES: Partial<
+  Record<string, { height: number; width: number }>
+> = {
+  note: {
+    height: 220,
+    width: 320,
+  },
+};
+
 export const getNodeStyleWithDefaultSize = ({
   style,
   type,
@@ -19,14 +28,17 @@ export const getNodeStyleWithDefaultSize = ({
     return style;
   }
 
+  const defaultSize =
+    typeof type === "string" ? NODE_DEFAULT_SIZES[type] : undefined;
+
   return {
     ...style,
     ...(typeof width === "number" || typeof style?.width !== "undefined"
       ? {}
-      : { width: DEFAULT_NODE_WIDTH }),
+      : { width: defaultSize?.width ?? DEFAULT_NODE_WIDTH }),
     ...(typeof height === "number" || typeof style?.height !== "undefined"
       ? {}
-      : { height: DEFAULT_NODE_HEIGHT }),
+      : { height: defaultSize?.height ?? DEFAULT_NODE_HEIGHT }),
   } satisfies CSSProperties;
 };
 

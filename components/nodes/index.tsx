@@ -5,6 +5,7 @@ import { ImageNode } from "./image";
 import { JsonRenderNode } from "./interface";
 import { LinkNode } from "./link";
 import { MermaidNode } from "./mermaid";
+import { NoteNode } from "./note";
 import { TextNode } from "./text";
 import { VideoNode } from "./video";
 
@@ -15,6 +16,7 @@ export const nodeTypes = {
   "json-render": JsonRenderNode,
   link: LinkNode,
   mermaid: MermaidNode,
+  note: NoteNode,
   text: TextNode,
   drop: DropNode,
   video: VideoNode,

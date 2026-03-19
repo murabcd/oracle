@@ -76,6 +76,7 @@ interface NodeDataSheetProps {
 }
 
 interface NodeLayoutProps {
+  allowModeChange?: boolean;
   children: ReactNode;
   id: string;
   data?: Record<string, unknown>;
@@ -557,6 +558,7 @@ const NodeDataSheet = ({
 };
 
 export const NodeLayout = ({
+  allowModeChange = true,
   children,
   type,
   id,
@@ -824,7 +826,7 @@ export const NodeLayout = ({
             <EyeIcon size={12} />
             <span>Focus</span>
           </ContextMenuItem>
-          {type !== "drop" && (
+          {type !== "drop" && allowModeChange && (
             <ContextMenuItem onClick={handleModeChange}>
               <WandSparklesIcon size={12} />
               <span>
