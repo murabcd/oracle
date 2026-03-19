@@ -12,6 +12,7 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useNodeGenerateHotkeys } from "@/hooks/use-node-generate-hotkeys";
+import { buildLinkNodeContextPrompt } from "@/lib/ai/prompts/link";
 import { handleError } from "@/lib/error/handle";
 import { generateLinkRequest } from "@/lib/link/client";
 import { filterModelsByVideoInput } from "@/lib/model-catalog";
@@ -78,38 +79,6 @@ const getSelectedModelId = ({
   return getDefaultModel(availableModels);
 };
 
-const buildPrompt = ({
-  documentTexts,
-  imageDescriptions,
-  linkTexts,
-  textPrompts,
-}: {
-  documentTexts: string[];
-  imageDescriptions: string[];
-  linkTexts: string[];
-  textPrompts: string[];
-}) => {
-  const content: string[] = [];
-
-  if (textPrompts.length) {
-    content.push("--- Text Context ---", ...textPrompts);
-  }
-
-  if (documentTexts.length) {
-    content.push("--- Document Context ---", ...documentTexts);
-  }
-
-  if (linkTexts.length) {
-    content.push("--- Link Context ---", ...linkTexts);
-  }
-
-  if (imageDescriptions.length) {
-    content.push("--- Image Context ---", ...imageDescriptions);
-  }
-
-  return content.join("\n");
-};
-
 export const LinkTransform = ({
   data,
   id,
@@ -158,7 +127,7 @@ export const LinkTransform = ({
     const documents = getDocumentsFromDocumentNodes(incomers);
     const imageDescriptions = getDescriptionsFromImageNodes(incomers);
     const videos = getVideosFromVideoNodes(incomers);
-    const prompt = buildPrompt({
+    const prompt = buildLinkNodeContextPrompt({
       documentTexts,
       imageDescriptions,
       linkTexts,

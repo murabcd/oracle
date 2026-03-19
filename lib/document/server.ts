@@ -1,6 +1,11 @@
 import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
+import {
+  buildDocumentGenerationPrompt,
+  documentSystemPrompt,
+  pdfExtractionPrompt,
+} from "@/lib/ai/prompts/document";
 import { parseError } from "@/lib/error/parse";
 import { documentExtractionModelId, textModels } from "@/lib/model-catalog";
 import { assertBlobUrl } from "@/lib/url";
@@ -11,12 +16,6 @@ import type {
   GenerateDocumentInput,
   GenerateDocumentSuccess,
 } from "./types";
-
-const pdfExtractionPrompt = [
-  "Extract the readable text from this document.",
-  "Preserve headings, bullets, and section order when possible.",
-  "Return plain text only.",
-].join("\n");
 
 const normalizeExtractedText = (value: string) =>
   value.replace(/\r\n/g, "\n").trim();
@@ -92,27 +91,6 @@ export async function extractDocumentText(
   }
 }
 
-const documentSystemPrompt = [
-  "You generate polished documents for an embedded document node.",
-  "Return plain markdown only.",
-  "Do not wrap the result in code fences.",
-  "Use concise headings, bullets, and short sections when useful.",
-].join("\n");
-
-const buildGeneratePrompt = ({
-  instructions,
-  prompt,
-  startingText,
-}: GenerateDocumentInput) =>
-  [
-    instructions ? `Instructions:\n${instructions}` : null,
-    prompt ? `Context:\n${prompt}` : null,
-    startingText ? `Current document:\n${startingText}` : null,
-    "Generate the document.",
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-
 export async function generateDocument(
   input: GenerateDocumentInput
 ): Promise<GenerateDocumentSuccess | ErrorResponse> {
@@ -126,7 +104,7 @@ export async function generateDocument(
           content: [
             {
               type: "text",
-              text: buildGeneratePrompt(input),
+              text: buildDocumentGenerationPrompt(input),
             },
             ...(input.documents ?? []).map((document) => ({
               type: "file" as const,

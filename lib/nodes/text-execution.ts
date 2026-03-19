@@ -2,14 +2,9 @@ import type { Node } from "@xyflow/react";
 import type { FileUIPart, UIMessage } from "ai";
 import type { TextNodeConfig, TextNodeResult } from "@/components/nodes/text";
 import {
-  getDescriptionsFromImageNodes,
-  getDocumentsFromDocumentNodes,
-  getImagesFromImageNodes,
-  getTextFromDocumentNodes,
-  getTextFromLinkNodes,
-  getTextFromTextNodes,
-  getVideosFromVideoNodes,
-} from "@/lib/xyflow";
+  buildTextNodePrompt,
+  defaultTextNodePrompt,
+} from "@/lib/ai/prompts/text";
 
 interface TextNodeExecutionInput {
   attachments: FileUIPart[];
@@ -23,13 +18,19 @@ export const buildTextNodeExecutionInput = ({
   incomers: Node[];
   instructions?: TextNodeConfig["instructions"];
 }): TextNodeExecutionInput => {
-  const textPrompts = getTextFromTextNodes(incomers);
-  const documentTexts = getTextFromDocumentNodes(incomers);
-  const linkTexts = getTextFromLinkNodes(incomers);
-  const documents = getDocumentsFromDocumentNodes(incomers);
-  const images = getImagesFromImageNodes(incomers);
-  const imageDescriptions = getDescriptionsFromImageNodes(incomers);
-  const videos = getVideosFromVideoNodes(incomers);
+  const {
+    documents,
+    documentTexts,
+    imageDescriptions,
+    images,
+    linkTexts,
+    prompt,
+    textPrompts,
+    videos,
+  } = buildTextNodePrompt({
+    incomers,
+    instructions,
+  });
 
   if (
     !(
@@ -44,28 +45,6 @@ export const buildTextNodeExecutionInput = ({
     )
   ) {
     throw new Error("No prompts found");
-  }
-
-  const content: string[] = [];
-
-  if (instructions) {
-    content.push("--- Instructions ---", instructions);
-  }
-
-  if (textPrompts.length) {
-    content.push("--- Text Prompts ---", ...textPrompts);
-  }
-
-  if (documentTexts.length) {
-    content.push("--- Document Text ---", ...documentTexts);
-  }
-
-  if (linkTexts.length) {
-    content.push("--- Link Context ---", ...linkTexts);
-  }
-
-  if (imageDescriptions.length) {
-    content.push("--- Image Descriptions ---", ...imageDescriptions);
   }
 
   const attachments: FileUIPart[] = [];
@@ -96,7 +75,7 @@ export const buildTextNodeExecutionInput = ({
 
   return {
     attachments,
-    prompt: content.join("\n") || "Use the provided media as context.",
+    prompt: prompt || defaultTextNodePrompt,
   };
 };
 

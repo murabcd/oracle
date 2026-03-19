@@ -12,6 +12,7 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useNodeGenerateHotkeys } from "@/hooks/use-node-generate-hotkeys";
+import { buildChartNodeContextPrompt } from "@/lib/ai/prompts/chart";
 import { serializeChartSpec } from "@/lib/chart/catalog";
 import { generateChartRequest } from "@/lib/chart/client";
 import { handleError } from "@/lib/error/handle";
@@ -76,38 +77,6 @@ const getSelectedModelId = ({
   }
 
   return getDefaultModel(availableModels);
-};
-
-const buildPromptContent = ({
-  documentTexts,
-  imageDescriptions,
-  linkTexts,
-  textPrompts,
-}: {
-  documentTexts: string[];
-  imageDescriptions: string[];
-  linkTexts: string[];
-  textPrompts: string[];
-}) => {
-  const content: string[] = [];
-
-  if (textPrompts.length) {
-    content.push("--- Text Context ---", ...textPrompts);
-  }
-
-  if (documentTexts.length) {
-    content.push("--- Document Context ---", ...documentTexts);
-  }
-
-  if (linkTexts.length) {
-    content.push("--- Link Context ---", ...linkTexts);
-  }
-
-  if (imageDescriptions.length) {
-    content.push("--- Image Context ---", ...imageDescriptions);
-  }
-
-  return content.join("\n");
 };
 
 export const ChartTransform = ({
@@ -188,7 +157,7 @@ export const ChartTransform = ({
 
       const response = await generateChartRequest({
         documents: generationInputs.documents,
-        prompt: buildPromptContent(generationInputs),
+        prompt: buildChartNodeContextPrompt(generationInputs),
         modelId,
         instructions: data.config.instructions,
         startingSpec: currentSpec,

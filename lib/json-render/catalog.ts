@@ -2,6 +2,7 @@ import { defineCatalog } from "@json-render/core";
 import { schema } from "@json-render/react/schema";
 import { shadcnComponentDefinitions } from "@json-render/shadcn/catalog";
 import type { infer as zInfer } from "zod";
+import { jsonRenderRules } from "@/lib/ai/prompts/json-render";
 
 const componentDefinitions = {
   Alert: shadcnComponentDefinitions.Alert,
@@ -27,15 +28,6 @@ export const jsonRenderCatalog = defineCatalog(schema, {
   components: componentDefinitions,
   actions: {},
 });
-
-const jsonRenderRules = [
-  "Generate only interfaces that fit inside a compact embedded preview, not a full page app.",
-  "Prefer Card, Stack, Grid, Heading, Text, Input, Checkbox, Select, Switch, Radio, Progress, Badge, Button, and Alert.",
-  "For forms, use Card as the root element with a vertical Stack inside it.",
-  "Keep copy concise and realistic. Use complete placeholder and label text.",
-  "Do not generate authentication side effects, navigation, or data fetching flows.",
-  "Buttons may exist visually, but keep the interface safe and self-contained.",
-];
 
 export const jsonRenderSystemPrompt = jsonRenderCatalog.prompt({
   customRules: jsonRenderRules,

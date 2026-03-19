@@ -21,6 +21,7 @@ import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useNodeGenerateHotkeys } from "@/hooks/use-node-generate-hotkeys";
+import { buildMermaidNodeContextPrompt } from "@/lib/ai/prompts/mermaid";
 import { handleError } from "@/lib/error/handle";
 import {
   downloadMermaidSvg,
@@ -87,38 +88,6 @@ const getSelectedModelId = ({
   }
 
   return getDefaultModel(availableModels);
-};
-
-const buildPromptContent = ({
-  documentTexts,
-  imageDescriptions,
-  linkTexts,
-  textPrompts,
-}: {
-  documentTexts: string[];
-  imageDescriptions: string[];
-  linkTexts: string[];
-  textPrompts: string[];
-}) => {
-  const content: string[] = [];
-
-  if (textPrompts.length) {
-    content.push("--- Text Context ---", ...textPrompts);
-  }
-
-  if (documentTexts.length) {
-    content.push("--- Document Context ---", ...documentTexts);
-  }
-
-  if (linkTexts.length) {
-    content.push("--- Link Context ---", ...linkTexts);
-  }
-
-  if (imageDescriptions.length) {
-    content.push("--- Image Context ---", ...imageDescriptions);
-  }
-
-  return content.join("\n");
 };
 
 export const MermaidTransform = ({
@@ -195,7 +164,7 @@ export const MermaidTransform = ({
 
       const response = await generateMermaidRequest({
         documents: generationInputs.documents,
-        prompt: buildPromptContent(generationInputs),
+        prompt: buildMermaidNodeContextPrompt(generationInputs),
         modelId,
         instructions: data.config.instructions,
         startingSource: data.result?.source ?? data.config.source,

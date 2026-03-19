@@ -1,6 +1,10 @@
 import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
+import {
+  buildLinkGenerationPrompt,
+  linkSystemPrompt,
+} from "@/lib/ai/prompts/link";
 import { parseError } from "@/lib/error/parse";
 import { textModels } from "@/lib/model-catalog";
 import type {
@@ -28,13 +32,6 @@ const getTextModel = (modelId: string) => {
 
   return model.chef.id === "google" ? google(modelId) : openai(modelId);
 };
-
-const linkSystemPrompt = [
-  "You generate a single best URL for a link node.",
-  "Return exactly one absolute http or https URL.",
-  "Do not include markdown, labels, commentary, or code fences.",
-  "Prefer official, stable, primary-source URLs when possible.",
-].join("\n");
 
 const getKnownEmbedUrl = (url: URL) => {
   if (
@@ -127,20 +124,6 @@ const extractGeneratedUrl = (value: string) => {
   return validatePreviewUrl(match[0]).toString();
 };
 
-const buildGeneratePrompt = ({
-  instructions,
-  prompt,
-  startingUrl,
-}: GenerateLinkInput) =>
-  [
-    instructions ? `Instructions:\n${instructions}` : null,
-    prompt ? `Context:\n${prompt}` : null,
-    startingUrl ? `Current URL:\n${startingUrl}` : null,
-    "Return the single best URL for this link node.",
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-
 export async function fetchLinkPreview(
   input: FetchLinkPreviewInput
 ): Promise<FetchLinkPreviewSuccess | ErrorResponse> {
@@ -205,7 +188,7 @@ export async function generateLink(
           content: [
             {
               type: "text",
-              text: buildGeneratePrompt(input),
+              text: buildLinkGenerationPrompt(input),
             },
             ...(input.documents ?? []).map((document) => ({
               type: "file" as const,

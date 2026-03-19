@@ -7,6 +7,11 @@ import {
   experimental_generateVideo as generateVideoAsset,
 } from "ai";
 import { nanoid } from "nanoid";
+import {
+  buildImageGenerationPrompt,
+  describeImagePrompt,
+  getEditImagePrompt,
+} from "@/lib/ai/prompts/media";
 import { parseError } from "@/lib/error/parse";
 import type {
   DescribeImageSuccess,
@@ -63,7 +68,7 @@ export async function describeImage(
         {
           role: "user",
           content: [
-            { type: "text", text: "Describe this image." },
+            { type: "text", text: describeImagePrompt },
             {
               type: "image",
               image: validatedUrl.toString(),
@@ -89,15 +94,7 @@ export async function generateImage(
   try {
     const result = await generateImageAsset({
       model: getImageModel(input.modelId),
-      prompt: [
-        "Generate an image based on the following instructions and context.",
-        "---",
-        "Instructions:",
-        input.instructions ?? "None.",
-        "---",
-        "Context:",
-        input.prompt,
-      ].join("\n"),
+      prompt: buildImageGenerationPrompt(input),
     });
 
     const { image } = result;
@@ -134,15 +131,10 @@ export async function editImage(
   input: EditImageInput
 ): Promise<GeneratedMediaSuccess | ErrorResponse> {
   try {
-    const defaultPrompt =
-      input.images.length > 1
-        ? "Create a variant of the image."
-        : "Create a single variant of the images.";
-
-    const prompt =
-      !input.instructions || input.instructions === ""
-        ? defaultPrompt
-        : input.instructions;
+    const { description, prompt } = getEditImagePrompt(
+      input.images.length,
+      input.instructions
+    );
 
     const imageData = await Promise.all(
       input.images.map(async (img) => {
@@ -176,7 +168,7 @@ export async function editImage(
     return {
       url: blob.url,
       type: "image/png",
-      description: input.instructions ?? defaultPrompt,
+      description,
     };
   } catch (error) {
     return { error: parseError(error) };
