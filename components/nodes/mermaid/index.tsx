@@ -1,11 +1,13 @@
-import { useNodeConnections } from "@xyflow/react";
-import type { BaseNodeData, NodeResultBase } from "@/lib/node-data";
+import type {
+  BaseNodeData,
+  NodeConfigBase,
+  NodeResultBase,
+} from "@/lib/node-data";
 import { initializeNodeData } from "@/lib/node-data";
 import { MermaidPrimitive } from "./primitive";
 import { MermaidTransform } from "./transform";
 
-export interface MermaidNodeConfig {
-  [key: string]: unknown;
+export interface MermaidNodeConfig extends NodeConfigBase {
   instructions?: string;
   model?: string;
   source?: string;
@@ -23,17 +25,11 @@ export interface MermaidNodeProps {
 }
 
 export const MermaidNode = (props: MermaidNodeProps) => {
-  const connections = useNodeConnections({
-    id: props.id,
-    handleType: "target",
-  });
-  const Component = connections.length ? MermaidTransform : MermaidPrimitive;
-
-  return (
-    <Component
-      {...props}
-      data={initializeNodeData(props.data)}
-      title="Mermaid"
-    />
+  const data = initializeNodeData<MermaidNodeConfig, MermaidNodeResult>(
+    props.data
   );
+  const Component =
+    data.config.mode === "transform" ? MermaidTransform : MermaidPrimitive;
+
+  return <Component {...props} data={data} title="Mermaid" />;
 };

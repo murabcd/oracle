@@ -1,12 +1,14 @@
 import type { JSONContent } from "@tiptap/core";
-import { useNodeConnections } from "@xyflow/react";
-import type { BaseNodeData, NodeResultBase } from "@/lib/node-data";
+import type {
+  BaseNodeData,
+  NodeConfigBase,
+  NodeResultBase,
+} from "@/lib/node-data";
 import { initializeNodeData } from "@/lib/node-data";
 import { TextPrimitive } from "./primitive";
 import { TextTransform } from "./transform";
 
-export interface TextNodeConfig {
-  [key: string]: unknown;
+export interface TextNodeConfig extends NodeConfigBase {
   content?: JSONContent;
   instructions?: string;
   model?: string;
@@ -31,13 +33,9 @@ export interface TextNodeProps {
 }
 
 export const TextNode = (props: TextNodeProps) => {
-  const connections = useNodeConnections({
-    id: props.id,
-    handleType: "target",
-  });
-  const Component = connections.length ? TextTransform : TextPrimitive;
+  const data = initializeNodeData<TextNodeConfig, TextNodeResult>(props.data);
+  const Component =
+    data.config.mode === "transform" ? TextTransform : TextPrimitive;
 
-  return (
-    <Component {...props} data={initializeNodeData(props.data)} title="Text" />
-  );
+  return <Component {...props} data={data} title="Text" />;
 };

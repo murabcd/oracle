@@ -12,6 +12,7 @@ import {
   EyeIcon,
   PaletteIcon,
   TrashIcon,
+  WandSparklesIcon,
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { type ReactNode, useState } from "react";
@@ -42,6 +43,7 @@ import { NODE_BORDER_COLORS } from "@/lib/node-colors";
 import {
   initializeNodeData,
   isNodeData,
+  type NodeMode,
   patchNodeConfig,
   patchNodeMeta,
 } from "@/lib/node-data";
@@ -701,6 +703,29 @@ export const NodeLayout = ({
     }
   };
 
+  const targetNodes = resolveActionTargetNodes();
+  const nextMode: NodeMode = targetNodes.every(
+    (targetNode) =>
+      initializeNodeData(targetNode.data).config.mode === "transform"
+  )
+    ? "primitive"
+    : "transform";
+
+  const handleModeChange = () => {
+    if (!targetNodes.length) {
+      return;
+    }
+
+    for (const targetNode of targetNodes) {
+      updateNodeData(
+        targetNode.id,
+        patchNodeConfig(initializeNodeData(targetNode.data), {
+          mode: nextMode,
+        })
+      );
+    }
+  };
+
   return (
     <>
       {type !== "drop" && Boolean(toolbar?.length) && (
@@ -799,6 +824,16 @@ export const NodeLayout = ({
             <EyeIcon size={12} />
             <span>Focus</span>
           </ContextMenuItem>
+          {type !== "drop" && (
+            <ContextMenuItem onClick={handleModeChange}>
+              <WandSparklesIcon size={12} />
+              <span>
+                {nextMode === "transform"
+                  ? "Make actionable"
+                  : "Make reference"}
+              </span>
+            </ContextMenuItem>
+          )}
           {type !== "drop" && (
             <ContextMenuSub>
               <ContextMenuSubTrigger>

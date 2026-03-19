@@ -1,11 +1,14 @@
-import { useNodeConnections } from "@xyflow/react";
-import type { BaseNodeData, NodeFile, NodeResultBase } from "@/lib/node-data";
+import type {
+  BaseNodeData,
+  NodeConfigBase,
+  NodeFile,
+  NodeResultBase,
+} from "@/lib/node-data";
 import { initializeNodeData } from "@/lib/node-data";
 import { ImagePrimitive } from "./primitive";
 import { ImageTransform } from "./transform";
 
-export interface ImageNodeConfig {
-  [key: string]: unknown;
+export interface ImageNodeConfig extends NodeConfigBase {
   height?: number;
   instructions?: string;
   model?: string;
@@ -26,13 +29,9 @@ export interface ImageNodeProps {
 }
 
 export const ImageNode = (props: ImageNodeProps) => {
-  const connections = useNodeConnections({
-    id: props.id,
-    handleType: "target",
-  });
-  const Component = connections.length ? ImageTransform : ImagePrimitive;
+  const data = initializeNodeData<ImageNodeConfig, ImageNodeResult>(props.data);
+  const Component =
+    data.config.mode === "transform" ? ImageTransform : ImagePrimitive;
 
-  return (
-    <Component {...props} data={initializeNodeData(props.data)} title="Image" />
-  );
+  return <Component {...props} data={data} title="Image" />;
 };

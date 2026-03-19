@@ -1,12 +1,14 @@
-import { useNodeConnections } from "@xyflow/react";
 import type { ChartSpec } from "@/lib/chart/catalog";
-import type { BaseNodeData, NodeResultBase } from "@/lib/node-data";
+import type {
+  BaseNodeData,
+  NodeConfigBase,
+  NodeResultBase,
+} from "@/lib/node-data";
 import { initializeNodeData } from "@/lib/node-data";
 import { ChartPrimitive } from "./primitive";
 import { ChartTransform } from "./transform";
 
-export interface ChartNodeConfig {
-  [key: string]: unknown;
+export interface ChartNodeConfig extends NodeConfigBase {
   instructions?: string;
   json?: string;
   model?: string;
@@ -26,13 +28,9 @@ export interface ChartNodeProps {
 }
 
 export const ChartNode = (props: ChartNodeProps) => {
-  const connections = useNodeConnections({
-    id: props.id,
-    handleType: "target",
-  });
-  const Component = connections.length ? ChartTransform : ChartPrimitive;
+  const data = initializeNodeData<ChartNodeConfig, ChartNodeResult>(props.data);
+  const Component =
+    data.config.mode === "transform" ? ChartTransform : ChartPrimitive;
 
-  return (
-    <Component {...props} data={initializeNodeData(props.data)} title="Chart" />
-  );
+  return <Component {...props} data={data} title="Chart" />;
 };

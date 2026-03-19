@@ -1,11 +1,13 @@
-import { useNodeConnections } from "@xyflow/react";
-import type { BaseNodeData, NodeResultBase } from "@/lib/node-data";
+import type {
+  BaseNodeData,
+  NodeConfigBase,
+  NodeResultBase,
+} from "@/lib/node-data";
 import { initializeNodeData } from "@/lib/node-data";
 import { LinkPrimitive } from "./primitive";
 import { LinkTransform } from "./transform";
 
-export interface LinkNodeConfig {
-  [key: string]: unknown;
+export interface LinkNodeConfig extends NodeConfigBase {
   instructions?: string;
   model?: string;
   url?: string;
@@ -29,17 +31,9 @@ export interface LinkNodeProps {
 }
 
 export const LinkNode = (props: LinkNodeProps) => {
-  const connections = useNodeConnections({
-    id: props.id,
-    handleType: "target",
-  });
-  const Component = connections.length ? LinkTransform : LinkPrimitive;
+  const data = initializeNodeData<LinkNodeConfig, LinkNodeResult>(props.data);
+  const Component =
+    data.config.mode === "transform" ? LinkTransform : LinkPrimitive;
 
-  return (
-    <Component
-      {...props}
-      data={initializeNodeData(props.data)}
-      title="Source"
-    />
-  );
+  return <Component {...props} data={data} title="Source" />;
 };

@@ -1,11 +1,14 @@
-import { useNodeConnections } from "@xyflow/react";
-import type { BaseNodeData, NodeFile, NodeResultBase } from "@/lib/node-data";
+import type {
+  BaseNodeData,
+  NodeConfigBase,
+  NodeFile,
+  NodeResultBase,
+} from "@/lib/node-data";
 import { initializeNodeData } from "@/lib/node-data";
 import { VideoPrimitive } from "./primitive";
 import { VideoTransform } from "./transform";
 
-export interface VideoNodeConfig {
-  [key: string]: unknown;
+export interface VideoNodeConfig extends NodeConfigBase {
   height?: number;
   instructions?: string;
   model?: string;
@@ -25,13 +28,9 @@ export interface VideoNodeProps {
 }
 
 export const VideoNode = (props: VideoNodeProps) => {
-  const connections = useNodeConnections({
-    id: props.id,
-    handleType: "target",
-  });
-  const Component = connections.length ? VideoTransform : VideoPrimitive;
+  const data = initializeNodeData<VideoNodeConfig, VideoNodeResult>(props.data);
+  const Component =
+    data.config.mode === "transform" ? VideoTransform : VideoPrimitive;
 
-  return (
-    <Component {...props} data={initializeNodeData(props.data)} title="Video" />
-  );
+  return <Component {...props} data={data} title="Video" />;
 };

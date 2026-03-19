@@ -1,6 +1,13 @@
 export const NODE_DATA_VERSION = 1;
 
 export type NodeExecutionStatus = "idle" | "running" | "success" | "error";
+export type NodeMode = "primitive" | "transform";
+export const DEFAULT_NODE_MODE: NodeMode = "primitive";
+
+export interface NodeConfigBase extends Record<string, unknown> {
+  borderColor?: string;
+  mode?: NodeMode;
+}
 
 export interface NodeFile {
   name?: string;
@@ -26,7 +33,7 @@ export interface NodeResultBase {
 }
 
 export interface BaseNodeData<
-  Config extends Record<string, unknown>,
+  Config extends NodeConfigBase,
   Result extends Record<string, unknown> | undefined = undefined,
 > extends Record<string, unknown> {
   config: Config;
@@ -45,9 +52,20 @@ const createNodeMeta = (timestamp: string): NodeMeta => ({
   updatedAt: timestamp,
 });
 
+export const getNodeMode = (value: unknown): NodeMode =>
+  value === "transform" ? "transform" : DEFAULT_NODE_MODE;
+
+const normalizeNodeConfig = <Config extends NodeConfigBase>(
+  config: Config
+): Config =>
+  ({
+    ...config,
+    mode: getNodeMode(config.mode),
+  }) as Config;
+
 export const isNodeData = (
   value: unknown
-): value is BaseNodeData<Record<string, unknown>> => {
+): value is BaseNodeData<NodeConfigBase> => {
   if (!isPlainObject(value)) {
     return false;
   }
@@ -63,19 +81,19 @@ export const isNodeData = (
 };
 
 export const createNodeData = <
-  Config extends Record<string, unknown>,
+  Config extends NodeConfigBase,
   Result extends Record<string, unknown> | undefined = undefined,
 >(
   config: Config,
   timestamp = new Date().toISOString()
 ): BaseNodeData<Config, Result> => ({
-  config,
+  config: normalizeNodeConfig(config),
   meta: createNodeMeta(timestamp),
   version: NODE_DATA_VERSION,
 });
 
 export const initializeNodeData = <
-  Config extends Record<string, unknown> = Record<string, unknown>,
+  Config extends NodeConfigBase = NodeConfigBase,
   Result extends Record<string, unknown> | undefined = undefined,
 >(
   value: unknown,
@@ -86,8 +104,8 @@ export const initializeNodeData = <
   }
 
   const config = isPlainObject(value.config)
-    ? (value.config as Config)
-    : ({} as Config);
+    ? normalizeNodeConfig(value.config as Config)
+    : normalizeNodeConfig({} as Config);
   const result = isPlainObject(value.result)
     ? (value.result as Result)
     : undefined;

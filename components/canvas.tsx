@@ -32,6 +32,7 @@ import { normalizeLinkUrl } from "@/lib/link/client";
 import { NODE_BORDER_COLORS } from "@/lib/node-colors";
 import {
   createNodeData,
+  DEFAULT_NODE_MODE,
   initializeNodeData,
   patchNodeConfig,
 } from "@/lib/node-data";
@@ -85,7 +86,10 @@ const getNodeDataForCreation = (value: unknown, timestamp: string) => {
 
   return {
     ...createNodeData({}, timestamp),
-    config: data.config,
+    config: {
+      ...data.config,
+      mode: data.config.mode ?? DEFAULT_NODE_MODE,
+    },
     ...(typeof data.result === "undefined" ? {} : { result: data.result }),
   };
 };

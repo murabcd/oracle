@@ -1,11 +1,14 @@
-import { useNodeConnections } from "@xyflow/react";
-import type { BaseNodeData, NodeFile, NodeResultBase } from "@/lib/node-data";
+import type {
+  BaseNodeData,
+  NodeConfigBase,
+  NodeFile,
+  NodeResultBase,
+} from "@/lib/node-data";
 import { initializeNodeData } from "@/lib/node-data";
 import { DocumentPrimitive } from "./primitive";
 import { DocumentTransform } from "./transform";
 
-export interface DocumentNodeConfig {
-  [key: string]: unknown;
+export interface DocumentNodeConfig extends NodeConfigBase {
   instructions?: string;
   model?: string;
   source?: NodeFile;
@@ -24,17 +27,11 @@ export interface DocumentNodeProps {
 }
 
 export const DocumentNode = (props: DocumentNodeProps) => {
-  const connections = useNodeConnections({
-    id: props.id,
-    handleType: "target",
-  });
-  const Component = connections.length ? DocumentTransform : DocumentPrimitive;
-
-  return (
-    <Component
-      {...props}
-      data={initializeNodeData(props.data)}
-      title="Document"
-    />
+  const data = initializeNodeData<DocumentNodeConfig, DocumentNodeResult>(
+    props.data
   );
+  const Component =
+    data.config.mode === "transform" ? DocumentTransform : DocumentPrimitive;
+
+  return <Component {...props} data={data} title="Document" />;
 };
