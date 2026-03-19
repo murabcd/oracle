@@ -21,6 +21,7 @@ import {
   PaletteIcon,
   PlusIcon,
   TrashIcon,
+  WandSparklesIcon,
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import type { MouseEvent, MouseEventHandler, SetStateAction } from "react";
@@ -610,6 +611,25 @@ const useCanvasController = (props: ReactFlowProps) => {
     [getSelectedActionNodes, updateNodeData]
   );
 
+  const getSelectedModeNodes = useCallback(
+    () => getSelectedActionNodes().filter((node) => node.type !== "note"),
+    [getSelectedActionNodes]
+  );
+
+  const handleSetMode = useCallback(
+    (mode: "primitive" | "transform") => {
+      for (const node of getSelectedModeNodes()) {
+        updateNodeData(
+          node.id,
+          patchNodeConfig(initializeNodeData(node.data), {
+            mode,
+          })
+        );
+      }
+    },
+    [getSelectedModeNodes, updateNodeData]
+  );
+
   const handleContextMenu = useCallback((event: MouseEvent) => {
     if (!(event.target instanceof HTMLElement)) {
       return;
@@ -657,11 +677,13 @@ const useCanvasController = (props: ReactFlowProps) => {
     handleEdgesChange,
     handleNodesChange,
     handleSetBorderColor,
+    handleSetMode,
     handleSelectAll,
     isValidConnection,
     loaded,
     nodes,
     restProps,
+    selectedModeNodes: getSelectedModeNodes(),
     selectedNodes: getSelectedActionNodes(),
   };
 };
@@ -681,13 +703,23 @@ export const Canvas = ({ children, ...props }: ReactFlowProps) => {
     handleEdgesChange,
     handleNodesChange,
     handleSetBorderColor,
+    handleSetMode,
     handleSelectAll,
     isValidConnection,
     loaded,
     nodes,
     restProps,
+    selectedModeNodes,
     selectedNodes,
   } = useCanvasController(props);
+
+  const nextMode =
+    selectedModeNodes.length > 0 &&
+    selectedModeNodes.every(
+      (node) => initializeNodeData(node.data).config.mode === "transform"
+    )
+      ? "primitive"
+      : "transform";
 
   if (!loaded) {
     return null;
@@ -725,6 +757,16 @@ export const Canvas = ({ children, ...props }: ReactFlowProps) => {
                     Duplicate {selectedNodes.length > 1 ? "selection" : "node"}
                   </span>
                 </ContextMenuItem>
+                {selectedModeNodes.length > 0 ? (
+                  <ContextMenuItem onClick={() => handleSetMode(nextMode)}>
+                    <WandSparklesIcon size={12} />
+                    <span>
+                      {nextMode === "transform"
+                        ? "Make actionable"
+                        : "Make reference"}
+                    </span>
+                  </ContextMenuItem>
+                ) : null}
                 <ContextMenuSub>
                   <ContextMenuSubTrigger>
                     <PaletteIcon size={12} />
