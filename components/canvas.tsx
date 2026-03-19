@@ -573,16 +573,16 @@ const useCanvasController = (props: ReactFlowProps) => {
   }, [copiedNodes.length, duplicateCopiedNodes, pasteLinkFromText]);
 
   const handleDuplicateAll = useCallback(() => {
-    const selected = getNodes().filter((node) => node.selected);
+    const selected = nodes.filter((node) => node.selected);
 
     for (const node of selected) {
       duplicateNode(node.id);
     }
-  }, [getNodes, duplicateNode]);
+  }, [duplicateNode, nodes]);
 
   const getSelectedActionNodes = useCallback(
-    () => getNodes().filter((node) => node.selected && node.type !== "drop"),
-    [getNodes]
+    () => nodes.filter((node) => node.selected && node.type !== "drop"),
+    [nodes]
   );
 
   const handleDeleteSelected = useCallback(() => {
