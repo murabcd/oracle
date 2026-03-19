@@ -1,6 +1,10 @@
 "use client";
 
 import type { FileUIPart, UIMessage } from "ai";
+import { cjk } from "@streamdown/cjk";
+import { code } from "@streamdown/code";
+import { math } from "@streamdown/math";
+import { mermaid } from "@streamdown/mermaid";
 import { PaperclipIcon, XIcon } from "lucide-react";
 import Image from "next/image";
 import type { ComponentProps, HTMLAttributes } from "react";
@@ -14,6 +18,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+
+const streamdownPlugins = {
+  cjk,
+  code,
+  math,
+  mermaid,
+} as const;
 
 type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -103,10 +114,12 @@ type MessageResponseProps = ComponentProps<typeof Streamdown>;
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
     <Streamdown
+      caret="block"
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className
       )}
+      plugins={streamdownPlugins}
       {...props}
     />
   ),

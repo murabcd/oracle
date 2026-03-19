@@ -15,7 +15,6 @@ import {
   useEffect,
   useMemo,
 } from "react";
-import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import {
   Message,
@@ -251,79 +250,93 @@ const TextTransformOutput = ({
   data: TextNodeProps["data"];
   nonUserMessages: UIMessage[];
   status: ReturnType<typeof useChat>["status"];
-}) => (
-  <div
-    className="nowheel h-full flex-1 overflow-auto rounded-t-3xl rounded-b-xl bg-secondary"
-    style={{ padding: "calc(1rem * var(--node-scale, 1))" }}
-  >
-    {status === "submitted" && (
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-60 animate-pulse rounded-lg" />
-        <Skeleton className="h-4 w-40 animate-pulse rounded-lg" />
-        <Skeleton className="h-4 w-50 animate-pulse rounded-lg" />
-      </div>
-    )}
-    {typeof data.result?.text === "string" &&
-    nonUserMessages.length === 0 &&
-    status !== "submitted" ? (
-      <div
-        style={{
-          fontSize: "calc(0.95rem * var(--node-scale, 1))",
-          lineHeight: "calc(1.6rem * var(--node-scale, 1))",
-        }}
-      >
-        <ReactMarkdown>{data.result.text}</ReactMarkdown>
-      </div>
-    ) : null}
-    {!(data.result?.text || nonUserMessages.length) &&
-      status !== "submitted" && (
-        <div className="flex h-full min-h-0 w-full items-center justify-center bg-secondary/60">
-          <p
-            className="text-muted-foreground"
-            style={{ fontSize: "calc(0.875rem * var(--node-scale, 1))" }}
-          >
-            Press <PlayIcon className="inline -translate-y-px" size={12} /> to
-            generate text
-          </p>
+}) => {
+  const latestAssistantMessageId = [...nonUserMessages]
+    .reverse()
+    .find((message) => message.role === "assistant")?.id;
+
+  return (
+    <div
+      className="nowheel h-full flex-1 overflow-auto rounded-t-3xl rounded-b-xl bg-secondary"
+      style={{ padding: "calc(1rem * var(--node-scale, 1))" }}
+    >
+      {status === "submitted" && (
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-60 animate-pulse rounded-lg" />
+          <Skeleton className="h-4 w-40 animate-pulse rounded-lg" />
+          <Skeleton className="h-4 w-50 animate-pulse rounded-lg" />
         </div>
       )}
-    {Boolean(nonUserMessages.length) &&
-      status !== "submitted" &&
-      nonUserMessages.map((message) => {
-        const sourceParts = message.parts.filter(
-          (part) => part.type === "source-url"
-        );
+      {typeof data.result?.text === "string" &&
+      nonUserMessages.length === 0 &&
+      status !== "submitted" ? (
+        <div
+          style={{
+            fontSize: "calc(0.95rem * var(--node-scale, 1))",
+            lineHeight: "calc(1.6rem * var(--node-scale, 1))",
+          }}
+        >
+          <MessageResponse>{data.result.text}</MessageResponse>
+        </div>
+      ) : null}
+      {!(data.result?.text || nonUserMessages.length) &&
+        status !== "submitted" && (
+          <div className="flex h-full min-h-0 w-full items-center justify-center bg-secondary/60">
+            <p
+              className="text-muted-foreground"
+              style={{ fontSize: "calc(0.875rem * var(--node-scale, 1))" }}
+            >
+              Press <PlayIcon className="inline -translate-y-px" size={12} /> to
+              generate text
+            </p>
+          </div>
+        )}
+      {Boolean(nonUserMessages.length) &&
+        status !== "submitted" &&
+        nonUserMessages.map((message) => {
+          const sourceParts = message.parts.filter(
+            (part) => part.type === "source-url"
+          );
 
-        return (
-          <Message
-            className="p-0 [&>div]:max-w-none"
-            from={message.role === "assistant" ? "assistant" : "user"}
-            key={message.id}
-          >
-            <div>
-              {Boolean(sourceParts.length) && (
-                <Sources>
-                  <SourcesTrigger count={sourceParts.length} />
-                  <SourcesContent>
-                    {sourceParts.map(({ url, title: sourceTitle }) => (
-                      <Source
-                        href={url}
-                        key={url ?? ""}
-                        title={sourceTitle ?? new URL(url).hostname}
-                      />
-                    ))}
-                  </SourcesContent>
-                </Sources>
-              )}
-              <MessageContent className="bg-transparent p-0">
-                <MessageResponse>{getMessageText(message)}</MessageResponse>
-              </MessageContent>
-            </div>
-          </Message>
-        );
-      })}
-  </div>
-);
+          return (
+            <Message
+              className="p-0 [&>div]:max-w-none"
+              from={message.role === "assistant" ? "assistant" : "user"}
+              key={message.id}
+            >
+              <div>
+                {Boolean(sourceParts.length) && (
+                  <Sources>
+                    <SourcesTrigger count={sourceParts.length} />
+                    <SourcesContent>
+                      {sourceParts.map(({ url, title: sourceTitle }) => (
+                        <Source
+                          href={url}
+                          key={url ?? ""}
+                          title={sourceTitle ?? new URL(url).hostname}
+                        />
+                      ))}
+                    </SourcesContent>
+                  </Sources>
+                )}
+                <MessageContent className="bg-transparent p-0">
+                  <MessageResponse
+                    isAnimating={
+                      status === "streaming" &&
+                      message.role === "assistant" &&
+                      message.id === latestAssistantMessageId
+                    }
+                  >
+                    {getMessageText(message)}
+                  </MessageResponse>
+                </MessageContent>
+              </div>
+            </Message>
+          );
+        })}
+    </div>
+  );
+};
 
 export const TextTransform = ({
   data,
