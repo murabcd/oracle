@@ -19,7 +19,7 @@ export const JsonRenderPreview = ({
       className
     )}
   >
-    <div className="min-h-full p-1 text-white">
+    <div className="h-full min-h-0 p-1 text-white">
       <JSONUIProvider initialState={{}} registry={jsonRenderRegistry}>
         <Renderer registry={jsonRenderRegistry} spec={spec as Spec} />
       </JSONUIProvider>

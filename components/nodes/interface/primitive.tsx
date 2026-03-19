@@ -43,9 +43,9 @@ export const JsonRenderPrimitive = ({
       type={type}
     >
       {parsed.spec ? (
-        <JsonRenderPreview className="min-h-72 flex-1" spec={parsed.spec} />
+        <JsonRenderPreview className="min-h-0 flex-1" spec={parsed.spec} />
       ) : (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary/60 px-4 text-center">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary/60 px-4 text-center">
           <p className="max-w-52 text-pretty text-muted-foreground text-sm">
             Connect a text, document, image, or video node to generate an
             interface here.

@@ -337,7 +337,7 @@ export const VideoTransform = ({
       type={type}
     >
       {loading ? (
-        <Skeleton className="flex min-h-72 flex-1 animate-pulse items-center justify-center rounded-b-xl bg-secondary/60">
+        <Skeleton className="flex min-h-0 flex-1 animate-pulse items-center justify-center rounded-b-xl bg-secondary/60">
           <Loader2Icon
             className="size-4 animate-spin text-muted-foreground"
             size={16}
@@ -345,14 +345,14 @@ export const VideoTransform = ({
         </Skeleton>
       ) : null}
       {!(loading || data.result?.video?.url || hasVideoGeneration) && (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 px-4 text-center">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 px-4 text-center">
           <p className="text-muted-foreground text-sm">
             Video generation is not configured in this app.
           </p>
         </div>
       )}
       {!(loading || hasGeneratedVideo) && hasVideoGeneration && (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-b-xl bg-secondary/60">
           <p className="text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
             generate video
@@ -360,10 +360,10 @@ export const VideoTransform = ({
         </div>
       )}
       {hasGeneratedVideo && !loading ? (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
           <video
             autoPlay
-            className="max-h-full min-h-0 w-full object-contain"
+            className="size-full min-h-0 object-contain"
             height={data.config.height ?? 450}
             loop
             muted

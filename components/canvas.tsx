@@ -36,8 +36,8 @@ import {
   patchNodeConfig,
 } from "@/lib/node-data";
 import {
-  applyDefaultNodeWidth,
-  getNodeStyleWithDefaultWidth,
+  applyDefaultNodeSize,
+  getNodeStyleWithDefaultSize,
 } from "@/lib/node-style";
 import { isEditableTarget } from "@/lib/utils";
 import { isValidSourceTarget } from "@/lib/xyflow";
@@ -95,7 +95,7 @@ const withNodeDefaults = (node: Node, fallbackTimestamp: string): Node => {
     return node;
   }
 
-  return applyDefaultNodeWidth({
+  return applyDefaultNodeSize({
     ...node,
     data: initializeNodeData(node.data, fallbackTimestamp),
   });
@@ -287,7 +287,11 @@ const useCanvasController = (props: ReactFlowProps) => {
         data,
         position: { x: 0, y: 0 },
         origin: [0, 0.5],
-        style: getNodeStyleWithDefaultWidth({
+        style: getNodeStyleWithDefaultSize({
+          height:
+            typeof nodeOptions.height === "number"
+              ? nodeOptions.height
+              : undefined,
           style:
             typeof nodeOptions.style === "object" && nodeOptions.style !== null
               ? nodeOptions.style

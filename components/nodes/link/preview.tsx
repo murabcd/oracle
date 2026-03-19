@@ -6,9 +6,14 @@ interface LinkPreviewProps {
 }
 
 export const LinkPreview = ({ result }: LinkPreviewProps) => {
+  const chromeStyle = {
+    paddingBlock: "calc(0.75rem * var(--node-scale, 1))",
+    paddingInline: "calc(1rem * var(--node-scale, 1))",
+  } as const;
+
   if (!result) {
     return (
-      <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 px-4 text-center">
+      <div className="flex min-h-0 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 px-4 text-center">
         <div className="max-w-56 text-muted-foreground text-sm leading-6">
           Paste a URL to create an embed or source preview here.
         </div>
@@ -17,7 +22,7 @@ export const LinkPreview = ({ result }: LinkPreviewProps) => {
   }
 
   let previewContent = (
-    <div className="flex min-h-72 items-center justify-center rounded-t-3xl bg-background/70">
+    <div className="flex h-full min-h-0 items-center justify-center rounded-t-3xl bg-background/70">
       <ImageIcon className="size-8 text-muted-foreground" />
     </div>
   );
@@ -26,7 +31,7 @@ export const LinkPreview = ({ result }: LinkPreviewProps) => {
     previewContent = (
       <iframe
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        className="min-h-72 w-full rounded-t-3xl border-0 bg-background"
+        className="size-full min-h-0 rounded-t-3xl border-0 bg-background"
         loading="lazy"
         src={result.embedUrl}
         title={result.title}
@@ -36,7 +41,7 @@ export const LinkPreview = ({ result }: LinkPreviewProps) => {
     previewContent = (
       <div
         aria-label={result.title}
-        className="min-h-72 w-full rounded-t-3xl bg-center bg-cover bg-no-repeat"
+        className="size-full min-h-0 rounded-t-3xl bg-center bg-cover bg-no-repeat"
         role="img"
         style={{ backgroundImage: `url("${result.image}")` }}
       />
@@ -44,13 +49,21 @@ export const LinkPreview = ({ result }: LinkPreviewProps) => {
   }
 
   return (
-    <div className="flex min-h-72 flex-1 flex-col rounded-b-xl bg-secondary/60">
-      {previewContent}
-      <div className="flex flex-col gap-2 px-4 py-3">
+    <div className="flex min-h-0 flex-1 flex-col rounded-b-xl bg-secondary/60">
+      <div className="min-h-0 flex-1 overflow-hidden">{previewContent}</div>
+      <div className="flex flex-col gap-2" style={chromeStyle}>
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate font-medium text-sm">{result.title}</p>
-            <div className="mt-1 flex items-center gap-2 text-muted-foreground text-xs">
+            <p
+              className="truncate font-medium"
+              style={{ fontSize: "calc(0.875rem * var(--node-scale, 1))" }}
+            >
+              {result.title}
+            </p>
+            <div
+              className="mt-1 flex items-center gap-2 text-muted-foreground"
+              style={{ fontSize: "calc(0.75rem * var(--node-scale, 1))" }}
+            >
               <GlobeIcon className="size-3" />
               <span className="truncate">
                 {result.siteName ?? result.hostname}
@@ -67,7 +80,13 @@ export const LinkPreview = ({ result }: LinkPreviewProps) => {
           </a>
         </div>
         {result.description ? (
-          <p className="line-clamp-3 text-muted-foreground text-sm leading-6">
+          <p
+            className="line-clamp-3 text-muted-foreground"
+            style={{
+              fontSize: "calc(0.875rem * var(--node-scale, 1))",
+              lineHeight: "calc(1.5rem * var(--node-scale, 1))",
+            }}
+          >
             {result.description}
           </p>
         ) : null}

@@ -45,6 +45,7 @@ import {
   patchNodeConfig,
   patchNodeMeta,
 } from "@/lib/node-data";
+import { DEFAULT_NODE_HEIGHT, DEFAULT_NODE_WIDTH } from "@/lib/node-style";
 import { cn } from "@/lib/utils";
 import { useNodeOperations } from "@/providers/node-operations";
 import { NodeToolbar } from "./toolbar";
@@ -468,6 +469,31 @@ const focusNodes = ({
   );
 };
 
+const getNodeSizeStyle = ({
+  height,
+  style,
+  width,
+}: {
+  height: number;
+  style?: CSSProperties;
+  width: number;
+}) =>
+  ({
+    ...style,
+    height,
+    width,
+  }) satisfies CSSProperties;
+
+const getResolvedNodeDimension = (value: unknown, fallback: number): number =>
+  typeof value === "number" && Number.isFinite(value) ? value : fallback;
+
+const getNodeScale = ({ height, width }: { height: number; width: number }) => {
+  const widthScale = width / DEFAULT_NODE_WIDTH;
+  const heightScale = height / DEFAULT_NODE_HEIGHT;
+
+  return Math.max(0.8, Math.min(1.4, Math.min(widthScale, heightScale)));
+};
+
 const NodeDataSheet = ({
   id,
   open,
@@ -561,6 +587,28 @@ export const NodeLayout = ({
     statusValue,
     updatedAtTitle,
   } = getNodeStatusMetadata(data);
+  const nodeWidth = getResolvedNodeDimension(
+    internalNode?.measured?.width ??
+      internalNode?.width ??
+      (internalNode?.style as CSSProperties | undefined)?.width,
+    DEFAULT_NODE_WIDTH
+  );
+  const nodeHeight = getResolvedNodeDimension(
+    internalNode?.measured?.height ??
+      internalNode?.height ??
+      (internalNode?.style as CSSProperties | undefined)?.height,
+    DEFAULT_NODE_HEIGHT
+  );
+  const contentStyle = {
+    ...(borderColor
+      ? {
+          boxShadow: `inset 0 0 0 1px ${borderColor}, 0 0 0 1px ${borderColor}33`,
+        }
+      : {}),
+    "--node-height": `${nodeHeight}px`,
+    "--node-scale": `${getNodeScale({ height: nodeHeight, width: nodeWidth })}`,
+    "--node-width": `${nodeWidth}px`,
+  } as CSSProperties;
   const resolveActionTargetNodes = () =>
     getActionTargetNodes({
       currentNode: getNode(id),
@@ -607,11 +655,11 @@ export const NodeLayout = ({
     params: { width: number; height: number }
   ) => {
     updateNode(id, {
-      style: {
-        ...(internalNode?.style ?? {}),
-        width: params.width,
+      style: getNodeSizeStyle({
         height: params.height,
-      },
+        style: internalNode?.style as CSSProperties | undefined,
+        width: params.width,
+      }),
     });
 
     if (type !== "drop") {
@@ -687,6 +735,15 @@ export const NodeLayout = ({
                 }}
                 minHeight={120}
                 minWidth={240}
+                onResize={(_event, params) => {
+                  updateNode(id, {
+                    style: getNodeSizeStyle({
+                      height: params.height,
+                      style: internalNode?.style as CSSProperties | undefined,
+                      width: params.width,
+                    }),
+                  });
+                }}
                 onResizeEnd={handleResizeEnd}
               />
             )}
@@ -719,13 +776,7 @@ export const NodeLayout = ({
                 "relative rounded-[28px] bg-card p-2 ring-1 ring-border",
                 contentClassName
               )}
-              style={
-                borderColor
-                  ? {
-                      boxShadow: `inset 0 0 0 1px ${borderColor}, 0 0 0 1px ${borderColor}33`,
-                    }
-                  : undefined
-              }
+              style={contentStyle}
             >
               {indicator}
               <div

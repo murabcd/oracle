@@ -96,11 +96,15 @@ export const ChartPreview = ({
   emptyMessage?: string;
   spec?: ChartSpec;
 }) => {
+  const chartPaddingStyle = {
+    padding: "calc(1rem * var(--node-scale, 1))",
+  } as const;
+
   if (!spec) {
     return (
       <div
         className={cn(
-          "flex min-h-72 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary/60 px-4 text-center",
+          "flex min-h-0 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary/60 px-4 text-center",
           className
         )}
       >
@@ -125,26 +129,37 @@ export const ChartPreview = ({
   return (
     <div
       className={cn(
-        "nowheel overflow-auto rounded-t-3xl rounded-b-xl bg-secondary/60 p-4",
+        "nowheel flex min-h-0 flex-1 flex-col overflow-auto rounded-t-3xl rounded-b-xl bg-secondary/60",
         className
       )}
+      style={chartPaddingStyle}
     >
-      <div className="flex min-h-full flex-col gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
         {spec.title || spec.description ? (
           <header className="space-y-1">
             {spec.title ? (
-              <p className="font-medium text-foreground text-sm">
+              <p
+                className="font-medium text-foreground"
+                style={{ fontSize: "calc(0.875rem * var(--node-scale, 1))" }}
+              >
                 {spec.title}
               </p>
             ) : null}
             {spec.description ? (
-              <p className="text-muted-foreground text-xs">
+              <p
+                className="text-muted-foreground"
+                style={{ fontSize: "calc(0.75rem * var(--node-scale, 1))" }}
+              >
                 {spec.description}
               </p>
             ) : null}
           </header>
         ) : null}
-        <ChartContainer className="min-h-64 w-full" config={chartConfig}>
+        <ChartContainer
+          className="h-full min-h-0 w-full flex-1"
+          config={chartConfig}
+          fitContainer
+        >
           <ChartRoot accessibilityLayer data={chartRows}>
             <CartesianGrid vertical={false} />
             <XAxis

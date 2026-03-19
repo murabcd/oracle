@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/command";
 import { nodeButtons } from "@/lib/node-buttons";
 import { createNodeData, initializeNodeData } from "@/lib/node-data";
-import { getNodeStyleWithDefaultWidth } from "@/lib/node-style";
+import { getNodeStyleWithDefaultSize } from "@/lib/node-style";
 import { NodeLayout } from "./layout";
 
 interface DropNodeProps {
@@ -44,7 +44,8 @@ const buildReplacementNode = ({
     position,
     data: nextData,
     origin: [0, 0.5] as [number, number],
-    style: getNodeStyleWithDefaultWidth({
+    style: getNodeStyleWithDefaultSize({
+      height: typeof rest.height === "number" ? rest.height : undefined,
       style:
         typeof rest.style === "object" && rest.style !== null
           ? rest.style

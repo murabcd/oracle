@@ -56,7 +56,14 @@ export const TextPrimitive = ({
       <div className="nowheel h-full overflow-auto rounded-3xl">
         <EditorProvider
           className={cn(
-            "prose prose-sm dark:prose-invert size-full p-6",
+            "prose dark:prose-invert size-full max-w-none p-[calc(1.5rem*var(--node-scale,1))]",
+            "[&_.ProseMirror]:min-h-full",
+            "[&_.ProseMirror]:text-[calc(0.95rem*var(--node-scale,1))]",
+            "[&_.ProseMirror]:leading-[calc(1.6rem*var(--node-scale,1))]",
+            "[&_.ProseMirror_h1]:text-[calc(1.8rem*var(--node-scale,1))]",
+            "[&_.ProseMirror_h2]:text-[calc(1.45rem*var(--node-scale,1))]",
+            "[&_.ProseMirror_h3]:text-[calc(1.2rem*var(--node-scale,1))]",
+            "[&_.ProseMirror_pre]:text-[calc(0.85rem*var(--node-scale,1))]",
             "[&_p:first-child]:mt-0",
             "[&_p:last-child]:mb-0"
           )}

@@ -252,7 +252,10 @@ const TextTransformOutput = ({
   nonUserMessages: UIMessage[];
   status: ReturnType<typeof useChat>["status"];
 }) => (
-  <div className="nowheel h-full flex-1 overflow-auto rounded-t-3xl rounded-b-xl bg-secondary p-4">
+  <div
+    className="nowheel h-full flex-1 overflow-auto rounded-t-3xl rounded-b-xl bg-secondary"
+    style={{ padding: "calc(1rem * var(--node-scale, 1))" }}
+  >
     {status === "submitted" && (
       <div className="flex flex-col gap-2">
         <Skeleton className="h-4 w-60 animate-pulse rounded-lg" />
@@ -263,12 +266,22 @@ const TextTransformOutput = ({
     {typeof data.result?.text === "string" &&
     nonUserMessages.length === 0 &&
     status !== "submitted" ? (
-      <ReactMarkdown>{data.result.text}</ReactMarkdown>
+      <div
+        style={{
+          fontSize: "calc(0.95rem * var(--node-scale, 1))",
+          lineHeight: "calc(1.6rem * var(--node-scale, 1))",
+        }}
+      >
+        <ReactMarkdown>{data.result.text}</ReactMarkdown>
+      </div>
     ) : null}
     {!(data.result?.text || nonUserMessages.length) &&
       status !== "submitted" && (
-        <div className="flex aspect-video w-full items-center justify-center bg-secondary/60">
-          <p className="text-muted-foreground text-sm">
+        <div className="flex h-full min-h-0 w-full items-center justify-center bg-secondary/60">
+          <p
+            className="text-muted-foreground"
+            style={{ fontSize: "calc(0.875rem * var(--node-scale, 1))" }}
+          >
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
             generate text
           </p>

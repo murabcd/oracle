@@ -101,7 +101,7 @@ export const MermaidPreview = ({
   const content = (() => {
     if (state.loading) {
       return (
-        <div className="flex min-h-72 flex-1 items-center justify-center">
+        <div className="flex min-h-0 flex-1 items-center justify-center">
           <Loader2Icon
             className="size-4 animate-spin text-muted-foreground"
             size={16}
@@ -115,7 +115,7 @@ export const MermaidPreview = ({
         <div
           className={cn(
             "nowheel flex flex-1 items-start justify-center overflow-auto p-4",
-            "[&_svg]:h-auto [&_svg]:w-auto [&_svg]:max-w-full [&_svg]:rounded-2xl"
+            "[&_svg]:h-full [&_svg]:max-h-full [&_svg]:w-full [&_svg]:max-w-full [&_svg]:rounded-2xl"
           )}
           // biome-ignore lint/security/noDangerouslySetInnerHtml: SVG is produced by @vercel/beautiful-mermaid from local node input.
           dangerouslySetInnerHTML={{ __html: state.svg }}
@@ -124,7 +124,7 @@ export const MermaidPreview = ({
     }
 
     return (
-      <div className="flex min-h-72 flex-1 items-center justify-center px-4 text-center">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center">
         {emptyContent ?? (
           <p className="max-w-56 text-pretty text-muted-foreground text-sm">
             {emptyMessage}
@@ -135,7 +135,7 @@ export const MermaidPreview = ({
   })();
 
   return (
-    <div className="flex min-h-72 flex-1 flex-col overflow-hidden rounded-t-3xl rounded-b-xl bg-secondary/60">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-3xl rounded-b-xl bg-secondary/60">
       {content}
       {state.error ? (
         <div className="flex items-center gap-2 border-t px-3 py-2 text-muted-foreground text-xs">

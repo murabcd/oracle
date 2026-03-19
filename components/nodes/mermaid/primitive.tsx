@@ -100,7 +100,7 @@ export const MermaidPrimitive = ({
         source={source}
       />
       <Textarea
-        className="shrink-0 resize-none rounded-none border-none bg-transparent! font-mono text-xs shadow-none focus-visible:ring-0"
+        className="shrink-0 resize-none rounded-none border-none bg-transparent! font-mono text-[calc(0.75rem*var(--node-scale,1))] shadow-none focus-visible:ring-0"
         onChange={handleChange}
         placeholder={placeholder}
         spellCheck={false}

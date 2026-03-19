@@ -2,32 +2,37 @@ import type { Node } from "@xyflow/react";
 import type { CSSProperties } from "react";
 
 export const DEFAULT_NODE_WIDTH = 384;
+export const DEFAULT_NODE_HEIGHT = 320;
 
-export const getNodeStyleWithDefaultWidth = ({
+export const getNodeStyleWithDefaultSize = ({
   style,
   type,
+  height,
   width,
 }: {
   style?: CSSProperties;
   type?: string;
+  height?: number;
   width?: number;
 }) => {
-  if (
-    type === "drop" ||
-    typeof width === "number" ||
-    typeof style?.width !== "undefined"
-  ) {
+  if (type === "drop") {
     return style;
   }
 
   return {
     ...style,
-    width: DEFAULT_NODE_WIDTH,
+    ...(typeof width === "number" || typeof style?.width !== "undefined"
+      ? {}
+      : { width: DEFAULT_NODE_WIDTH }),
+    ...(typeof height === "number" || typeof style?.height !== "undefined"
+      ? {}
+      : { height: DEFAULT_NODE_HEIGHT }),
   } satisfies CSSProperties;
 };
 
-export const applyDefaultNodeWidth = (node: Node): Node => {
-  const style = getNodeStyleWithDefaultWidth({
+export const applyDefaultNodeSize = (node: Node): Node => {
+  const style = getNodeStyleWithDefaultSize({
+    height: node.height,
     style: node.style as CSSProperties | undefined,
     type: node.type,
     width: node.width,

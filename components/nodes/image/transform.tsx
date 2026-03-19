@@ -273,7 +273,7 @@ export const ImageTransform = ({
       type={type}
     >
       {loading ? (
-        <Skeleton className="flex min-h-72 flex-1 animate-pulse items-center justify-center rounded-b-xl bg-secondary/60">
+        <Skeleton className="flex min-h-0 flex-1 animate-pulse items-center justify-center rounded-b-xl bg-secondary/60">
           <Loader2Icon
             className="size-4 animate-spin text-muted-foreground"
             size={16}
@@ -281,7 +281,7 @@ export const ImageTransform = ({
         </Skeleton>
       ) : null}
       {!(loading || data.result?.image?.url) && (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
           <p className="text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
             create an image
@@ -289,10 +289,10 @@ export const ImageTransform = ({
         </div>
       )}
       {!loading && data.result?.image?.url && (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-b-xl bg-secondary/60 p-4">
           <Image
             alt="Generated image"
-            className="max-h-full min-h-0 w-full object-contain"
+            className="size-full min-h-0 object-contain"
             height={1000}
             src={data.result.image.url}
             width={1000}

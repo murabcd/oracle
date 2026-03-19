@@ -396,9 +396,9 @@ export const JsonRenderTransform = ({
       type={type}
     >
       {previewSpec ? (
-        <JsonRenderPreview className="min-h-72 flex-1" spec={previewSpec} />
+        <JsonRenderPreview className="min-h-0 flex-1" spec={previewSpec} />
       ) : (
-        <div className="flex min-h-72 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary/60 px-4 text-center">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-t-3xl rounded-b-xl bg-secondary/60 px-4 text-center">
           <p className="max-w-56 text-pretty text-muted-foreground text-sm">
             Press <PlayIcon className="inline -translate-y-px" size={12} /> to
             generate an interface.

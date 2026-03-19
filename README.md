@@ -1,10 +1,10 @@
 <a href="https://oracle-oss.vercel.app">
-  <img alt="Open-source visual thinking and synthesis workspace for product work." src="./public/preview/oracle.png">
+  <img alt="Open Source Visual Thinking Playground Built with Next.js and AI SDK." src="./public/preview/oracle.png">
   <h1 align="center">Oracle</h1>
 </a>
 
 <p align="center">
-  Open-source visual thinking and synthesis workspace for product work.
+  Open Source Visual Thinking Playground Built with Next.js and AI SDK.
 </p>
 
 <p align="center">
